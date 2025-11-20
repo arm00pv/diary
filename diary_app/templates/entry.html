@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                {% if entry %}Edit Entry{% else %}New Entry{% endif %}
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="entry_date" class="form-label">Date</label>
+                        <input type="date" class="form-control" id="entry_date" name="entry_date"
+                               value="{{ entry.entry_date.strftime('%Y-%m-%d') if entry else today }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="mood" class="form-label">Mood</label>
+                        <select class="form-select" id="mood" name="mood">
+                            <option value="" {% if not entry or not entry.mood %}selected{% endif %}>Select Mood</option>
+                            <option value="Happy" {% if entry and entry.mood == 'Happy' %}selected{% endif %}>Happy</option>
+                            <option value="Sad" {% if entry and entry.mood == 'Sad' %}selected{% endif %}>Sad</option>
+                            <option value="Anxious" {% if entry and entry.mood == 'Anxious' %}selected{% endif %}>Anxious</option>
+                            <option value="Neutral" {% if entry and entry.mood == 'Neutral' %}selected{% endif %}>Neutral</option>
+                            <option value="Excited" {% if entry and entry.mood == 'Excited' %}selected{% endif %}>Excited</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="content" class="form-label">What's on your mind?</label>
+                        <textarea class="form-control" id="content" name="content" rows="10" required>{{ entry.content if entry else '' }}</textarea>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('main.index') }}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+
+                {% if entry %}
+                <hr>
+                <form method="POST" action="{{ url_for('main.delete_entry', entry_id=entry.id) }}" onsubmit="return confirm('Are you sure?');">
+                    <button type="submit" class="btn btn-danger btn-sm">Delete Entry</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

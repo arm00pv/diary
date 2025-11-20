@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                <img src="https://via.placeholder.com/150" class="rounded-circle mb-3" alt="AI Avatar">
+                <h5 class="card-title">AI Companion</h5>
+                <p class="card-text">I'm learning about you from your diary entries.</p>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <h6>Stats</h6>
+                <p>Total Entries: <strong>{{ entry_count }}</strong></p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">Persona Analysis</div>
+            <div class="card-body">
+                <h5>Who are you?</h5>
+                <p class="lead">{{ ai_insight }}</p>
+                <hr>
+                <div class="alert alert-warning">
+                    <small>Note: This is a placeholder for the AI feature. In the future, this will use NLP to analyze your entries.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

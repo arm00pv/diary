@@ -1,0 +1,69 @@
+import unittest
+from diary_app.app import create_app, db
+from diary_app.models import User, DiaryEntry
+
+class DiaryTestCase(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app({'TESTING': True, 'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:', 'WTF_CSRF_ENABLED': False})
+        self.client = self.app.test_client()
+        self.app_context = self.app.app_context()
+        self.app_context.push()
+        db.create_all()
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.app_context.pop()
+
+    def register(self, username, password):
+        return self.client.post('/register', data=dict(
+            username=username,
+            password=password
+        ), follow_redirects=True)
+
+    def login(self, username, password):
+        return self.client.post('/login', data=dict(
+            username=username,
+            password=password
+        ), follow_redirects=True)
+
+    def logout(self):
+        return self.client.get('/logout', follow_redirects=True)
+
+    def test_register_login_logout(self):
+        # Test Registration
+        rv = self.register('testuser', 'password')
+        self.assertIn(b'Your Diary', rv.data) # Should be redirected to index
+
+        # Test Logout
+        rv = self.logout()
+        self.assertIn(b'Login', rv.data)
+
+        # Test Login
+        rv = self.login('testuser', 'password')
+        self.assertIn(b'Your Diary', rv.data)
+
+        # Logout again to test invalid login
+        self.logout()
+
+        # Test Invalid Login
+        rv = self.login('testuser', 'wrongpass')
+        self.assertIn(b'Invalid username or password', rv.data)
+
+    def test_entry_creation(self):
+        self.register('testuser', 'password')
+        rv = self.client.post('/entry/new', data=dict(
+            content='Dear Diary, today was great.',
+            entry_date='2023-10-27',
+            mood='Happy'
+        ), follow_redirects=True)
+        self.assertIn(b'Dear Diary, today was great.', rv.data)
+        self.assertIn(b'Happy', rv.data)
+
+    def test_persona_access(self):
+        self.register('testuser', 'password')
+        rv = self.client.get('/persona')
+        self.assertIn(b'AI Companion', rv.data)
+
+if __name__ == '__main__':
+    unittest.main()
