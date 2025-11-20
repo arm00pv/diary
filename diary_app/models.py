@@ -29,3 +29,7 @@ class DiaryEntry(db.Model):
 
     # Simple mood tracking for AI analysis later
     mood = db.Column(db.String(50), nullable=True)
+
+    # New fields for AI and Organization
+    sentiment_score = db.Column(db.Float, default=0.0) # -1.0 (Negative) to 1.0 (Positive)
+    tags = db.Column(db.String(200), nullable=True) # Comma separated tags

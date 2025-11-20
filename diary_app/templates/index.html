@@ -6,6 +6,17 @@
     <a href="{{ url_for('main.new_entry') }}" class="btn btn-primary">New Entry</a>
 </div>
 
+<div class="row mb-4">
+    <div class="col-md-12">
+        <form action="{{ url_for('main.index') }}" method="GET">
+            <div class="input-group">
+                <input type="text" class="form-control" placeholder="Search entries or tags..." name="q" value="{{ request.args.get('q', '') }}">
+                <button class="btn btn-outline-secondary" type="submit">Search</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="row">
     {% if entries %}
         {% for entry in entries %}
@@ -19,6 +30,15 @@
                         {% endif %}
                     </div>
                     <p class="card-text text-truncate">{{ entry.content }}</p>
+
+                    {% if entry.tags %}
+                    <div class="mb-2">
+                        {% for tag in entry.tags.split(',') %}
+                            <span class="badge bg-info text-dark rounded-pill">{{ tag.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
                     <a href="{{ url_for('main.view_entry', entry_id=entry.id) }}" class="btn btn-sm btn-outline-primary">View / Edit</a>
                 </div>
             </div>

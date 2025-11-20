@@ -55,10 +55,39 @@ class DiaryTestCase(unittest.TestCase):
         rv = self.client.post('/entry/new', data=dict(
             content='Dear Diary, today was great.',
             entry_date='2023-10-27',
-            mood='Happy'
+            mood='Happy',
+            tags='life, fun'
         ), follow_redirects=True)
         self.assertIn(b'Dear Diary, today was great.', rv.data)
         self.assertIn(b'Happy', rv.data)
+        self.assertIn(b'life', rv.data)
+
+    def test_search(self):
+        self.register('testuser', 'password')
+        # Create entry 1
+        self.client.post('/entry/new', data=dict(
+            content='Apple pie recipe',
+            entry_date='2023-10-27',
+            mood='Happy',
+            tags='food'
+        ), follow_redirects=True)
+        # Create entry 2
+        self.client.post('/entry/new', data=dict(
+            content='Coding python',
+            entry_date='2023-10-28',
+            mood='Neutral',
+            tags='work'
+        ), follow_redirects=True)
+
+        # Search for 'Apple'
+        rv = self.client.get('/?q=Apple', follow_redirects=True)
+        self.assertIn(b'Apple pie recipe', rv.data)
+        self.assertNotIn(b'Coding python', rv.data)
+
+        # Search for tag 'work'
+        rv = self.client.get('/?q=work', follow_redirects=True)
+        self.assertNotIn(b'Apple pie recipe', rv.data)
+        self.assertIn(b'Coding python', rv.data)
 
     def test_persona_access(self):
         self.register('testuser', 'password')

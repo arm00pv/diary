@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from datetime import datetime
 from werkzeug.exceptions import abort
+from textblob import TextBlob
 
 # Import models and db
 from .models import db, User, DiaryEntry
@@ -99,7 +100,15 @@ def create_app(test_config=None):
     @main_bp.route('/')
     @login_required
     def index():
-        entries = DiaryEntry.query.filter_by(user_id=current_user.id).order_by(DiaryEntry.entry_date.desc()).all()
+        query = request.args.get('q')
+        if query:
+            # Simple search: content or tags
+            entries = DiaryEntry.query.filter(
+                DiaryEntry.user_id == current_user.id,
+                (DiaryEntry.content.contains(query) | DiaryEntry.tags.contains(query))
+            ).order_by(DiaryEntry.entry_date.desc()).all()
+        else:
+            entries = DiaryEntry.query.filter_by(user_id=current_user.id).order_by(DiaryEntry.entry_date.desc()).all()
         return render_template('index.html', entries=entries)
 
     @main_bp.route('/entry/new', methods=['GET', 'POST'])
@@ -109,17 +118,23 @@ def create_app(test_config=None):
             content = request.form.get('content')
             date_str = request.form.get('entry_date')
             mood = request.form.get('mood')
+            tags = request.form.get('tags')
 
             try:
                 entry_date = datetime.strptime(date_str, '%Y-%m-%d').date()
             except ValueError:
                 entry_date = datetime.utcnow().date()
 
+            # Calculate Sentiment
+            sentiment = TextBlob(content).sentiment.polarity
+
             entry = DiaryEntry(
                 user_id=current_user.id,
                 content=content,
                 entry_date=entry_date,
-                mood=mood
+                mood=mood,
+                tags=tags,
+                sentiment_score=sentiment
             )
             db.session.add(entry)
             db.session.commit()
@@ -139,6 +154,10 @@ def create_app(test_config=None):
             entry.content = request.form.get('content')
             date_str = request.form.get('entry_date')
             entry.mood = request.form.get('mood')
+            entry.tags = request.form.get('tags')
+
+            # Recalculate sentiment
+            entry.sentiment_score = TextBlob(entry.content).sentiment.polarity
 
             try:
                 entry.entry_date = datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -166,19 +185,51 @@ def create_app(test_config=None):
     @ai_bp.route('/persona')
     @login_required
     def persona():
-        # Placeholder for AI Persona logic
-        # In the future, this will aggregate data from entries
-        user_entries = DiaryEntry.query.filter_by(user_id=current_user.id).all()
+        user_entries = DiaryEntry.query.filter_by(user_id=current_user.id).order_by(DiaryEntry.entry_date.asc()).all()
         entry_count = len(user_entries)
 
-        # Simple word count as a placeholder analysis
+        if not user_entries:
+            return render_template('persona.html',
+                                   ai_insight="Write some entries so I can get to know you!",
+                                   entry_count=0,
+                                   dates=[],
+                                   sentiments=[],
+                                   question="How are you feeling right now?")
+
+        # Prepare data for chart
+        dates = [e.entry_date.strftime('%Y-%m-%d') for e in user_entries]
+        sentiments = [e.sentiment_score for e in user_entries]
+
+        # Simple word count
         total_words = sum(len(e.content.split()) for e in user_entries)
+        avg_sentiment = sum(sentiments) / entry_count if entry_count > 0 else 0
 
-        ai_insight = "I am getting to know you. Keep writing!"
+        ai_insight = "I am getting to know you. "
         if entry_count > 5:
-            ai_insight = f"You are a prolific writer! You have written {total_words} words. I sense you are a thoughtful person."
+            ai_insight += f"You are a prolific writer ({total_words} words)! "
 
-        return render_template('persona.html', ai_insight=ai_insight, entry_count=entry_count)
+        if avg_sentiment > 0.3:
+            ai_insight += "You seem generally positive and optimistic."
+        elif avg_sentiment < -0.3:
+            ai_insight += "You seem to be going through a tough time. Remember to take care of yourself."
+        else:
+            ai_insight += "Your days seem balanced."
+
+        # Question of the day logic
+        last_entry = user_entries[-1]
+        if last_entry.sentiment_score < -0.2:
+            question = "It seems like things were tough recently. What is one small thing that could bring you joy today?"
+        elif last_entry.sentiment_score > 0.5:
+            question = "You've been feeling great! How can you share this positivity with others?"
+        else:
+            question = "What is the most interesting thing that happened to you recently?"
+
+        return render_template('persona.html',
+                               ai_insight=ai_insight,
+                               entry_count=entry_count,
+                               dates=dates,
+                               sentiments=sentiments,
+                               question=question)
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)

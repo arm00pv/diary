@@ -26,6 +26,10 @@
                         </select>
                     </div>
                     <div class="mb-3">
+                        <label for="tags" class="form-label">Tags (comma separated)</label>
+                        <input type="text" class="form-control" id="tags" name="tags" placeholder="e.g., work, family, vacation" value="{{ entry.tags if entry and entry.tags else '' }}">
+                    </div>
+                    <div class="mb-3">
                         <label for="content" class="form-label">What's on your mind?</label>
                         <textarea class="form-control" id="content" name="content" rows="10" required>{{ entry.content if entry else '' }}</textarea>
                     </div>
