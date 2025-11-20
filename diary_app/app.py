@@ -97,6 +97,19 @@ def create_app(test_config=None):
         return redirect(url_for('auth.login'))
 
     # Main Routes
+    @main_bp.route('/settings', methods=['GET', 'POST'])
+    @login_required
+    def settings():
+        if request.method == 'POST':
+            theme = request.form.get('theme')
+            if theme:
+                current_user.theme_preference = theme
+                db.session.commit()
+                flash('Theme updated successfully!')
+            return redirect(url_for('main.settings'))
+
+        return render_template('settings.html')
+
     @main_bp.route('/')
     @login_required
     def index():
@@ -110,6 +123,24 @@ def create_app(test_config=None):
         else:
             entries = DiaryEntry.query.filter_by(user_id=current_user.id).order_by(DiaryEntry.entry_date.desc()).all()
         return render_template('index.html', entries=entries)
+
+    # Context Processor to inject theme URL into all templates
+    @app.context_processor
+    def inject_theme():
+        theme_map = {
+            'default': 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
+            'dark': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.0/dist/darkly/bootstrap.min.css',
+            'nature': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.0/dist/minty/bootstrap.min.css',
+            'warm': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.0/dist/sandstone/bootstrap.min.css',
+            'professional': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.0/dist/cosmo/bootstrap.min.css',
+            'purple': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.0/dist/lux/bootstrap.min.css'
+        }
+
+        current_theme_url = theme_map.get('default')
+        if current_user.is_authenticated:
+            current_theme_url = theme_map.get(current_user.theme_preference, theme_map['default'])
+
+        return dict(current_theme_url=current_theme_url)
 
     @main_bp.route('/entry/new', methods=['GET', 'POST'])
     @login_required

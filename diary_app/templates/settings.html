@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">Settings</div>
+            <div class="card-body">
+                <h5 class="card-title">Appearance</h5>
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="theme" class="form-label">Theme Selection</label>
+                        <select class="form-select" id="theme" name="theme">
+                            <option value="default" {% if current_user.theme_preference == 'default' %}selected{% endif %}>Default (Blue)</option>
+                            <option value="dark" {% if current_user.theme_preference == 'dark' %}selected{% endif %}>Dark Mode</option>
+                            <option value="nature" {% if current_user.theme_preference == 'nature' %}selected{% endif %}>Nature (Minty)</option>
+                            <option value="warm" {% if current_user.theme_preference == 'warm' %}selected{% endif %}>Warm (Sandstone)</option>
+                            <option value="professional" {% if current_user.theme_preference == 'professional' %}selected{% endif %}>Professional (Cosmo)</option>
+                            <option value="purple" {% if current_user.theme_preference == 'purple' %}selected{% endif %}>Lux (Black/White)</option>
+                        </select>
+                        <div class="form-text">Select a theme to change the look and feel of your diary.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

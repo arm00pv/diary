@@ -94,5 +94,19 @@ class DiaryTestCase(unittest.TestCase):
         rv = self.client.get('/persona')
         self.assertIn(b'AI Companion', rv.data)
 
+    def test_theme_change(self):
+        self.register('testuser', 'password')
+        # Default theme check
+        rv = self.client.get('/')
+        self.assertIn(b'bootstrap.min.css', rv.data)
+
+        # Change theme to dark
+        rv = self.client.post('/settings', data=dict(theme='dark'), follow_redirects=True)
+        self.assertIn(b'Theme updated successfully', rv.data)
+
+        # Verify dark theme is loaded
+        rv = self.client.get('/')
+        self.assertIn(b'darkly/bootstrap.min.css', rv.data)
+
 if __name__ == '__main__':
     unittest.main()

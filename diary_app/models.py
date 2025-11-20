@@ -10,6 +10,9 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(150), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
 
+    # User preferences
+    theme_preference = db.Column(db.String(50), default='default')
+
     entries = db.relationship('DiaryEntry', backref='author', lazy=True)
 
     def set_password(self, password):
