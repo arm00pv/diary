@@ -2,7 +2,12 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Your Diary</h1>
+    <div>
+        <h1>Your Diary</h1>
+        {% if streak > 0 %}
+        <span class="badge bg-success">Current Streak: {{ streak }} Day{% if streak > 1 %}s{% endif %} 🔥</span>
+        {% endif %}
+    </div>
     <a href="{{ url_for('main.new_entry') }}" class="btn btn-primary">New Entry</a>
 </div>
 

@@ -16,6 +16,21 @@
                 <p>Total Entries: <strong>{{ entry_count }}</strong></p>
             </div>
         </div>
+
+        {% if keywords %}
+        <div class="card mb-4">
+            <div class="card-header">Top Topics</div>
+            <ul class="list-group list-group-flush">
+                {% for word, count in keywords %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ word }}
+                    <span class="badge bg-secondary rounded-pill">{{ count }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
         <div class="card bg-light">
             <div class="card-body">
                 <h6 class="card-title text-primary">Question of the Day</h6>
@@ -30,6 +45,14 @@
             <div class="card-body">
                 <h5>Who are you?</h5>
                 <p class="lead">{{ ai_insight }}</p>
+
+                {% if advice %}
+                <hr>
+                <h6>AI Advice</h6>
+                <div class="alert alert-info">
+                    {{ advice }}
+                </div>
+                {% endif %}
             </div>
         </div>
 

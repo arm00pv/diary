@@ -1,14 +1,101 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from datetime import datetime
+from datetime import datetime, timedelta
 from werkzeug.exceptions import abort
 from textblob import TextBlob
+from collections import Counter
 
 # Import models and db
 from .models import db, User, DiaryEntry
 
+def calculate_streak(entries):
+    """
+    Calculates the current streak of consecutive days with entries.
+
+    Args:
+        entries (list): List of DiaryEntry objects, sorted by date (descending or ascending).
+
+    Returns:
+        int: The number of consecutive days the user has written.
+    """
+    if not entries:
+        return 0
+
+    # Ensure entries are sorted by date descending
+    sorted_entries = sorted(entries, key=lambda x: x.entry_date, reverse=True)
+
+    streak = 0
+    today = datetime.utcnow().date()
+
+    # Check if there is an entry for today or yesterday to start the streak
+    last_entry_date = sorted_entries[0].entry_date
+
+    if last_entry_date == today:
+        streak = 1
+        current_check_date = today - timedelta(days=1)
+    elif last_entry_date == today - timedelta(days=1):
+        streak = 1
+        current_check_date = today - timedelta(days=2)
+    else:
+        return 0 # Streak broken
+
+    # Iterate through the rest of the entries
+    entry_dates = {e.entry_date for e in sorted_entries}
+
+    while current_check_date in entry_dates:
+        streak += 1
+        current_check_date -= timedelta(days=1)
+
+    return streak
+
+def get_ai_advice(avg_sentiment, keywords):
+    """
+    Generates simple advice based on sentiment score and extracted keywords.
+
+    Args:
+        avg_sentiment (float): The average sentiment score (-1.0 to 1.0).
+        keywords (list): A list of tuples (word, count) representing frequent terms.
+
+    Returns:
+        str: A piece of advice or encouragement.
+    """
+    advice = ""
+
+    # Sentiment-based advice
+    if avg_sentiment < -0.5:
+        advice = "It seems you've been going through a very difficult time. consider reaching out to a friend or professional. "
+    elif avg_sentiment < -0.2:
+        advice = "Things have been a bit rough lately. Be kind to yourself and take small breaks. "
+    elif avg_sentiment > 0.5:
+        advice = "You're doing great! Try to channel this energy into a new project or hobby. "
+    else:
+        advice = "Consistency is key. Keep observing your daily life. "
+
+    # Keyword-based additions (simple heuristic)
+    keywords_flat = [k[0].lower() for k in keywords]
+
+    if 'work' in keywords_flat or 'job' in keywords_flat:
+        if avg_sentiment < 0:
+            advice += "Work seems to be a stressor. Can you delegate tasks or take some time off?"
+        else:
+            advice += "Your career seems to be a source of engagement right now."
+
+    if 'sleep' in keywords_flat or 'tired' in keywords_flat:
+        advice += " Make sure you are prioritizing your rest."
+
+    return advice
+
 def create_app(test_config=None):
+    """
+    Application Factory function to create and configure the Flask app.
+
+    Args:
+        test_config (dict): Configuration dictionary for testing purposes.
+
+    Returns:
+        Flask: The configured Flask application instance.
+    """
     app = Flask(__name__, instance_relative_config=True)
 
     # Configuration
@@ -37,6 +124,7 @@ def create_app(test_config=None):
 
     @login_manager.user_loader
     def load_user(user_id):
+        """Callback to reload the user object from the user ID stored in the session."""
         return User.query.get(int(user_id))
 
     with app.app_context():
@@ -52,6 +140,7 @@ def create_app(test_config=None):
     # Auth Routes
     @auth_bp.route('/login', methods=['GET', 'POST'])
     def login():
+        """Handle user login."""
         if current_user.is_authenticated:
             return redirect(url_for('main.index'))
 
@@ -70,6 +159,7 @@ def create_app(test_config=None):
 
     @auth_bp.route('/register', methods=['GET', 'POST'])
     def register():
+        """Handle user registration."""
         if current_user.is_authenticated:
             return redirect(url_for('main.index'))
 
@@ -93,6 +183,7 @@ def create_app(test_config=None):
     @auth_bp.route('/logout')
     @login_required
     def logout():
+        """Handle user logout."""
         logout_user()
         return redirect(url_for('auth.login'))
 
@@ -100,6 +191,7 @@ def create_app(test_config=None):
     @main_bp.route('/settings', methods=['GET', 'POST'])
     @login_required
     def settings():
+        """User settings page for changing themes."""
         if request.method == 'POST':
             theme = request.form.get('theme')
             if theme:
@@ -113,6 +205,7 @@ def create_app(test_config=None):
     @main_bp.route('/')
     @login_required
     def index():
+        """Dashboard showing diary entries and search results."""
         query = request.args.get('q')
         if query:
             # Simple search: content or tags
@@ -122,11 +215,19 @@ def create_app(test_config=None):
             ).order_by(DiaryEntry.entry_date.desc()).all()
         else:
             entries = DiaryEntry.query.filter_by(user_id=current_user.id).order_by(DiaryEntry.entry_date.desc()).all()
-        return render_template('index.html', entries=entries)
+
+        # Calculate Streak
+        # We query all entries for streak calculation to be accurate even if search is applied on UI,
+        # but for efficiency, we could just fetch dates. Here we use the user's all entries.
+        all_user_entries = DiaryEntry.query.filter_by(user_id=current_user.id).all()
+        streak = calculate_streak(all_user_entries)
+
+        return render_template('index.html', entries=entries, streak=streak)
 
     # Context Processor to inject theme URL into all templates
     @app.context_processor
     def inject_theme():
+        """Injects the correct CSS URL based on the user's theme preference."""
         theme_map = {
             'default': 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
             'dark': 'https://cdn.jsdelivr.net/npm/bootswatch@5.3.0/dist/darkly/bootstrap.min.css',
@@ -145,6 +246,7 @@ def create_app(test_config=None):
     @main_bp.route('/entry/new', methods=['GET', 'POST'])
     @login_required
     def new_entry():
+        """Create a new diary entry."""
         if request.method == 'POST':
             content = request.form.get('content')
             date_str = request.form.get('entry_date')
@@ -177,6 +279,7 @@ def create_app(test_config=None):
     @main_bp.route('/entry/<int:entry_id>', methods=['GET', 'POST'])
     @login_required
     def view_entry(entry_id):
+        """View and edit an existing diary entry."""
         entry = DiaryEntry.query.get_or_404(entry_id)
         if entry.user_id != current_user.id:
             abort(403)
@@ -204,6 +307,7 @@ def create_app(test_config=None):
     @main_bp.route('/entry/<int:entry_id>/delete', methods=['POST'])
     @login_required
     def delete_entry(entry_id):
+        """Delete a diary entry."""
         entry = DiaryEntry.query.get_or_404(entry_id)
         if entry.user_id != current_user.id:
             abort(403)
@@ -216,6 +320,10 @@ def create_app(test_config=None):
     @ai_bp.route('/persona')
     @login_required
     def persona():
+        """
+        AI Analytics page.
+        Calculates sentiment trends, word counts, keyword extraction, and generates advice.
+        """
         user_entries = DiaryEntry.query.filter_by(user_id=current_user.id).order_by(DiaryEntry.entry_date.asc()).all()
         entry_count = len(user_entries)
 
@@ -225,16 +333,29 @@ def create_app(test_config=None):
                                    entry_count=0,
                                    dates=[],
                                    sentiments=[],
-                                   question="How are you feeling right now?")
+                                   question="How are you feeling right now?",
+                                   keywords=[],
+                                   advice="Start writing to unlock insights!")
 
         # Prepare data for chart
         dates = [e.entry_date.strftime('%Y-%m-%d') for e in user_entries]
         sentiments = [e.sentiment_score for e in user_entries]
 
-        # Simple word count
-        total_words = sum(len(e.content.split()) for e in user_entries)
+        # Aggregate all content for analysis
+        full_text = " ".join([e.content for e in user_entries])
+        blob = TextBlob(full_text)
+
+        # Extract Noun Phrases (Keywords)
+        # We filter for longer phrases or frequent words to avoid noise
+        noun_phrases = blob.noun_phrases
+        # Count frequencies
+        phrase_counts = Counter(noun_phrases).most_common(5)
+
+        # Calculate stats
+        total_words = len(full_text.split())
         avg_sentiment = sum(sentiments) / entry_count if entry_count > 0 else 0
 
+        # Generate Insights
         ai_insight = "I am getting to know you. "
         if entry_count > 5:
             ai_insight += f"You are a prolific writer ({total_words} words)! "
@@ -255,12 +376,17 @@ def create_app(test_config=None):
         else:
             question = "What is the most interesting thing that happened to you recently?"
 
+        # Generate Advice
+        advice = get_ai_advice(avg_sentiment, phrase_counts)
+
         return render_template('persona.html',
                                ai_insight=ai_insight,
                                entry_count=entry_count,
                                dates=dates,
                                sentiments=sentiments,
-                               question=question)
+                               question=question,
+                               keywords=phrase_counts,
+                               advice=advice)
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
