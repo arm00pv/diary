@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
+import os
+from datetime import datetime, timedelta
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, current_app
 from flask_login import login_required, current_user
 from functools import wraps
 from .models import db, User, DiaryEntry
@@ -73,12 +75,39 @@ def dashboard():
         # All Users List
         all_users = User.query.filter_by(role='user').all()
 
+        # Global Activity Chart (Last 30 Days)
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        daily_activity = db.session.query(
+            func.date(DiaryEntry.entry_date), func.count(DiaryEntry.id)
+        ).filter(DiaryEntry.entry_date >= thirty_days_ago)\
+         .group_by(func.date(DiaryEntry.entry_date)).all()
+
+        # Format for Chart.js
+        activity_dates = [str(day[0]) for day in daily_activity]
+        activity_counts = [day[1] for day in daily_activity]
+
+        # System Health
+        db_path = current_app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+        try:
+            db_size = round(os.path.getsize(db_path) / 1024, 2) # KB
+        except OSError:
+            db_size = "Unknown"
+
+        system_health = {
+            'db_size_kb': db_size,
+            'server_time': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC'),
+            'status': 'Healthy'
+        }
+
         return render_template('admin/dashboard.html',
                             total_users=total_users,
                             total_entries=total_entries,
                             top_users=top_users,
                             at_risk_users=at_risk_users,
-                            all_users=all_users)
+                            all_users=all_users,
+                            activity_dates=activity_dates,
+                            activity_counts=activity_counts,
+                            system_health=system_health)
 
 # --- Super Admin Actions ---
 
