@@ -36,7 +36,13 @@
                     </div>
                     <div class="mb-3">
                         <label for="content" class="form-label">What's on your mind?</label>
-                        <textarea class="form-control" id="content" name="content" rows="10" required>{{ entry.content if entry else '' }}</textarea>
+                        <div class="input-group">
+                            <textarea class="form-control" id="content" name="content" rows="10" required>{{ entry.content if entry else '' }}</textarea>
+                            <button class="btn btn-outline-secondary" type="button" id="mic-btn" title="Dictate Entry">
+                                🎤
+                            </button>
+                        </div>
+                        <small class="text-muted" id="mic-status" style="display: none;">Listening...</small>
                     </div>
                     <div class="d-flex justify-content-between">
                         <a href="{{ url_for('main.index') }}" class="btn btn-secondary">Cancel</a>
@@ -63,6 +69,7 @@
 </style>
 
 <script>
+    // Zen Mode
     document.getElementById('zen-mode-btn').addEventListener('click', function() {
         document.body.classList.toggle('zen-active');
         if (document.body.classList.contains('zen-active')) {
@@ -71,5 +78,71 @@
             this.textContent = "Zen Mode 🧘";
         }
     });
+
+    // Voice to Text
+    const micBtn = document.getElementById('mic-btn');
+    const micStatus = document.getElementById('mic-status');
+    const contentArea = document.getElementById('content');
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        let isListening = false;
+
+        micBtn.addEventListener('click', () => {
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        });
+
+        recognition.onstart = () => {
+            isListening = true;
+            micBtn.classList.remove('btn-outline-secondary');
+            micBtn.classList.add('btn-danger');
+            micStatus.style.display = 'block';
+        };
+
+        recognition.onend = () => {
+            isListening = false;
+            micBtn.classList.remove('btn-danger');
+            micBtn.classList.add('btn-outline-secondary');
+            micStatus.style.display = 'none';
+        };
+
+        recognition.onresult = (event) => {
+            let interimTranscript = '';
+            let finalTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+
+            // Append to textarea (simple logic, appending at end)
+            // Ideally we insert at cursor, but simple append is fine for now
+            if (finalTranscript) {
+                 contentArea.value += (contentArea.value ? ' ' : '') + finalTranscript;
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.error("Speech recognition error", event.error);
+            micStatus.innerText = "Error: " + event.error;
+            isListening = false;
+        };
+
+    } else {
+        micBtn.style.display = 'none';
+        console.log("Web Speech API not supported");
+    }
 </script>
 {% endblock %}

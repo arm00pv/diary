@@ -104,10 +104,32 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card mb-4">
             <div class="card-header">Mood Tracker (Sentiment Analysis)</div>
             <div class="card-body">
                 <canvas id="sentimentChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Badges -->
+        <div class="card">
+            <div class="card-header">Achievements</div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-center">
+                    {% for code, badge in badges.items() %}
+                        {% if current_user.has_badge(code) %}
+                        <div class="text-center m-2 p-2 border rounded bg-light" style="width: 100px;" title="{{ badge.desc }}">
+                            <div style="font-size: 2rem;">{{ badge.icon }}</div>
+                            <small>{{ badge.name }}</small>
+                        </div>
+                        {% else %}
+                        <div class="text-center m-2 p-2 border rounded" style="width: 100px; opacity: 0.3;" title="Locked: {{ badge.desc }}">
+                            <div style="font-size: 2rem;">{{ badge.icon }}</div>
+                            <small>{{ badge.name }}</small>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </div>

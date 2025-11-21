@@ -22,7 +22,19 @@ class User(UserMixin, db.Model):
     is_flagged = db.Column(db.Boolean, default=False)
     flagged_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
 
+    # Gamification
+    badges = db.Column(db.String(500), default='') # Comma separated badge codes
+
     entries = db.relationship('DiaryEntry', backref='author', lazy=True, cascade="all, delete-orphan")
+
+    def add_badge(self, badge_code):
+        if not self.badges:
+            self.badges = badge_code
+        elif badge_code not in self.badges.split(','):
+            self.badges += f",{badge_code}"
+
+    def has_badge(self, badge_code):
+        return self.badges and badge_code in self.badges.split(',')
 
     @property
     def is_admin(self):

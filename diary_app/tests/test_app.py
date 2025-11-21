@@ -152,9 +152,27 @@ class DiaryTestCase(unittest.TestCase):
             entry = user.entries[1]
             self.assertEqual(entry.dominant_emotion, 'joy')
 
-        # Yesterday's entry (mocking by creating another entry and manually updating date in DB would be harder in integration test)
-        # So we trust the unit test logic or would need to mock datetime or direct DB access.
-        # For this level, we just verify the badge appears.
+    def test_badges_and_export(self):
+        self.register('badge_user', 'pass')
+
+        # Create first entry
+        self.client.post('/entry/new', data=dict(
+            content='My first entry!',
+            entry_date='2023-11-01',
+            mood='Neutral'
+        ))
+
+        # Verify First Step Badge
+        with self.app.app_context():
+            user = User.query.filter_by(username='badge_user').first()
+            self.assertTrue(user.has_badge('first_entry'))
+            self.assertFalse(user.has_badge('prolific'))
+
+        # Test Export
+        rv = self.client.get('/export')
+        self.assertEqual(rv.status_code, 200)
+        self.assertIn(b'My first entry!', rv.data)
+        self.assertIn('diary_export.json', rv.headers['Content-Disposition'])
 
     def test_super_admin_dashboard(self):
         # Create Super Admin directly in DB

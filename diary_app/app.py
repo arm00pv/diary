@@ -7,6 +7,7 @@ from werkzeug.exceptions import abort
 from textblob import TextBlob
 from collections import Counter
 from .ai_utils import detect_dominant_emotion
+from .gamification import check_badges, BADGE_DEFINITIONS
 
 # Import models and db
 from .models import db, User, DiaryEntry
@@ -281,6 +282,18 @@ def create_app(test_config=None):
             )
             db.session.add(entry)
             db.session.commit()
+
+            # Check for badges
+            # Need to recalculate streak potentially, or just check basic ones
+            # For simplicity, we calculate streak here (inefficient but works for small app)
+            all_entries = DiaryEntry.query.filter_by(user_id=current_user.id).all()
+            streak = calculate_streak(all_entries)
+            new_badges = check_badges(current_user, streak)
+
+            if new_badges:
+                for b in new_badges:
+                    flash(f"🏆 New Badge Unlocked: {b['name']}!", "success")
+
             return redirect(url_for('main.index'))
 
         today = datetime.utcnow().strftime('%Y-%m-%d')
@@ -348,7 +361,8 @@ def create_app(test_config=None):
                                    keywords=[],
                                    advice="Start writing to unlock insights!",
                                    weekly_recap={},
-                                   activity_data={})
+                                   activity_data={},
+                                   badges=BADGE_DEFINITIONS)
 
         # Prepare data for chart
         dates = [e.entry_date.strftime('%Y-%m-%d') for e in user_entries]
@@ -440,7 +454,28 @@ def create_app(test_config=None):
                                keywords=phrase_counts,
                                advice=advice,
                                weekly_recap=weekly_recap,
-                               activity_data=activity_data)
+                               activity_data=activity_data,
+                               badges=BADGE_DEFINITIONS)
+
+    @main_bp.route('/export')
+    @login_required
+    def export_data():
+        """Export all user entries as JSON."""
+        entries = DiaryEntry.query.filter_by(user_id=current_user.id).all()
+        data = []
+        for e in entries:
+            data.append({
+                'date': e.entry_date.strftime('%Y-%m-%d'),
+                'content': e.content,
+                'mood': e.mood,
+                'emotion': e.dominant_emotion,
+                'sentiment': e.sentiment_score,
+                'tags': e.tags
+            })
+
+        response = jsonify(data)
+        response.headers.set('Content-Disposition', 'attachment; filename=diary_export.json')
+        return response
 
     from .admin import admin_bp
     app.register_blueprint(auth_bp)

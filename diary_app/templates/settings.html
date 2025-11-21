@@ -24,6 +24,16 @@
                 </form>
             </div>
         </div>
+
+        <div class="card mt-4">
+            <div class="card-header">Data Management</div>
+            <div class="card-body">
+                <p>Download a copy of all your diary entries.</p>
+                <a href="{{ url_for('main.export_data') }}" class="btn btn-outline-secondary">
+                    ⬇️ Export Data (JSON)
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
