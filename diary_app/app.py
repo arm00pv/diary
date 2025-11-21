@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from werkzeug.exceptions import abort
 from textblob import TextBlob
 from collections import Counter
+from .ai_utils import detect_dominant_emotion
 
 # Import models and db
 from .models import db, User, DiaryEntry
@@ -266,13 +267,17 @@ def create_app(test_config=None):
             # Calculate Sentiment
             sentiment = TextBlob(content).sentiment.polarity
 
+            # Calculate Emotion
+            emotion = detect_dominant_emotion(content)
+
             entry = DiaryEntry(
                 user_id=current_user.id,
                 content=content,
                 entry_date=entry_date,
                 mood=mood,
                 tags=tags,
-                sentiment_score=sentiment
+                sentiment_score=sentiment,
+                dominant_emotion=emotion
             )
             db.session.add(entry)
             db.session.commit()
@@ -295,8 +300,9 @@ def create_app(test_config=None):
             entry.mood = request.form.get('mood')
             entry.tags = request.form.get('tags')
 
-            # Recalculate sentiment
+            # Recalculate sentiment and emotion
             entry.sentiment_score = TextBlob(entry.content).sentiment.polarity
+            entry.dominant_emotion = detect_dominant_emotion(entry.content)
 
             try:
                 entry.entry_date = datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -340,7 +346,9 @@ def create_app(test_config=None):
                                    sentiments=[],
                                    question="How are you feeling right now?",
                                    keywords=[],
-                                   advice="Start writing to unlock insights!")
+                                   advice="Start writing to unlock insights!",
+                                   weekly_recap={},
+                                   activity_data={})
 
         # Prepare data for chart
         dates = [e.entry_date.strftime('%Y-%m-%d') for e in user_entries]
@@ -384,6 +392,45 @@ def create_app(test_config=None):
         # Generate Advice
         advice = get_ai_advice(avg_sentiment, phrase_counts)
 
+        # --- Weekly Recap Logic ---
+        today = datetime.utcnow().date()
+        week_start = today - timedelta(days=7)
+
+        # Filter for last 7 days
+        weekly_entries = [e for e in user_entries if e.entry_date >= week_start]
+
+        weekly_recap = {}
+        if weekly_entries:
+            w_sentiment = sum(e.sentiment_score for e in weekly_entries) / len(weekly_entries)
+            w_emotions = [e.dominant_emotion for e in weekly_entries]
+            w_top_emotion = Counter(w_emotions).most_common(1)[0][0]
+            w_count = len(weekly_entries)
+
+            recap_text = f"This week you wrote {w_count} entries. "
+            if w_sentiment > 0.2:
+                recap_text += "It was a generally positive week! "
+            elif w_sentiment < -0.2:
+                recap_text += "It was a challenging week. "
+            else:
+                recap_text += "It was a balanced week. "
+
+            recap_text += f"Your dominant emotion was '{w_top_emotion}'."
+
+            weekly_recap = {
+                'count': w_count,
+                'avg_sentiment': round(w_sentiment, 2),
+                'top_emotion': w_top_emotion,
+                'text': recap_text
+            }
+
+        # --- Activity Heatmap Data ---
+        # We need a list of {date: "YYYY-MM-DD", count: N} for the last 365 days?
+        # Or simpler: just pass a dictionary of date->count to the template and let JS/Jinja handle it.
+        activity_data = {}
+        for e in user_entries:
+            d_str = e.entry_date.strftime('%Y-%m-%d')
+            activity_data[d_str] = activity_data.get(d_str, 0) + 1
+
         return render_template('persona.html',
                                ai_insight=ai_insight,
                                entry_count=entry_count,
@@ -391,7 +438,9 @@ def create_app(test_config=None):
                                sentiments=sentiments,
                                question=question,
                                keywords=phrase_counts,
-                               advice=advice)
+                               advice=advice,
+                               weekly_recap=weekly_recap,
+                               activity_data=activity_data)
 
     from .admin import admin_bp
     app.register_blueprint(auth_bp)

@@ -123,6 +123,35 @@ class DiaryTestCase(unittest.TestCase):
         rv = self.client.get('/')
         self.assertIn(b'Current Streak: 1', rv.data)
 
+    def test_emotion_detection(self):
+        self.register('emo_user', 'pass')
+
+        # Create Angry Entry
+        self.client.post('/entry/new', data=dict(
+            content='I am furious and angry and mad!',
+            entry_date='2023-11-01',
+            mood='Angry'
+        ))
+
+        # Verify DB
+        with self.app.app_context():
+            user = User.query.filter_by(username='emo_user').first()
+            entry = user.entries[0]
+            self.assertEqual(entry.dominant_emotion, 'anger')
+
+        # Create Happy Entry
+        self.client.post('/entry/new', data=dict(
+            content='What a wonderful and amazing day! I love it.',
+            entry_date='2023-11-02',
+            mood='Happy'
+        ))
+
+        # Verify DB
+        with self.app.app_context():
+            user = User.query.filter_by(username='emo_user').first()
+            entry = user.entries[1]
+            self.assertEqual(entry.dominant_emotion, 'joy')
+
         # Yesterday's entry (mocking by creating another entry and manually updating date in DB would be harder in integration test)
         # So we trust the unit test logic or would need to mock datetime or direct DB access.
         # For this level, we just verify the badge appears.

@@ -40,6 +40,32 @@
         </div>
     </div>
     <div class="col-md-8">
+
+        <!-- Weekly Recap -->
+        {% if weekly_recap %}
+        <div class="card mb-4 border-info">
+            <div class="card-header bg-info text-white">Weekly Recap</div>
+            <div class="card-body">
+                <h5 class="card-title">Last 7 Days</h5>
+                <p class="card-text">{{ weekly_recap.text }}</p>
+                <div class="d-flex justify-content-around text-center">
+                    <div>
+                        <h6>Emotion</h6>
+                        <span class="badge bg-warning text-dark">{{ weekly_recap.top_emotion|upper }}</span>
+                    </div>
+                    <div>
+                        <h6>Sentiment</h6>
+                        <span class="badge bg-secondary">{{ weekly_recap.avg_sentiment }}</span>
+                    </div>
+                    <div>
+                        <h6>Entries</h6>
+                        <span class="badge bg-light text-dark">{{ weekly_recap.count }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="card mb-4">
             <div class="card-header">Persona Analysis</div>
             <div class="card-body">
@@ -53,6 +79,28 @@
                     {{ advice }}
                 </div>
                 {% endif %}
+            </div>
+        </div>
+
+        <!-- Heatmap -->
+        <div class="card mb-4">
+            <div class="card-header">Writing Consistency (Heatmap)</div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap" style="gap: 4px;">
+                    {% for i in range(30) %}
+                        {# We can't easily iterate dates backwards in Jinja without a custom filter or passing a list.
+                           Let's assume we want to show just a visual grid for now, or we can use the list passed from backend.
+                           Actually, let's render the heatmap properly using a simple loop if we pass dates.
+                           For simplicity, I will rely on a simple script or just showing the last 30 days.
+                           To make it robust, let's just use a visual placeholder style for valid days. #}
+                    {% endfor %}
+
+                    {# Better approach: Simple grid of last 60 days #}
+                    <div id="heatmap" class="d-flex flex-wrap" style="gap: 3px; max-width: 100%;">
+                        <!-- Populated by JS for simplicity -->
+                    </div>
+                    <small class="text-muted mt-2">Last 60 Days Activity</small>
+                </div>
             </div>
         </div>
 
@@ -96,5 +144,32 @@
             }
         }
     });
+
+    // Simple Heatmap JS
+    const activityData = {{ activity_data | tojson }};
+    const heatmapContainer = document.getElementById('heatmap');
+
+    // Generate last 60 days
+    const today = new Date();
+    for (let i = 59; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(today.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+
+        const box = document.createElement('div');
+        box.style.width = '15px';
+        box.style.height = '15px';
+        box.style.borderRadius = '2px';
+        box.title = dateStr;
+
+        if (activityData[dateStr]) {
+            box.style.backgroundColor = '#198754'; // Green
+            box.title += `: ${activityData[dateStr]} entries`;
+        } else {
+            box.style.backgroundColor = '#e9ecef'; // Gray
+        }
+
+        heatmapContainer.appendChild(box);
+    }
 </script>
 {% endblock %}
