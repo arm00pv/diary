@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="text-primary">Super Admin Dashboard</h1>
+    <span class="badge bg-dark">Assignment User</span>
+</div>
+
+<div class="row">
+    <!-- Create Staff -->
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">Assign New Staff</div>
+            <div class="card-body">
+                <form action="{{ url_for('admin.create_staff') }}" method="POST">
+                    <div class="mb-3">
+                        <label>Username</label>
+                        <input type="text" name="username" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Password</label>
+                        <input type="password" name="password" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Role</label>
+                        <select name="role" class="form-select">
+                            <option value="admin">Admin (Full Access)</option>
+                            <option value="moderator">Moderator (Quality Control)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Assign Role</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Staff List -->
+    <div class="col-md-8">
+
+        <!-- Flagged Admins Alert -->
+        {% if flagged_admins %}
+        <div class="card border-danger mb-4">
+            <div class="card-header bg-danger text-white">
+                <strong>⚠️ Flagged Admins (Review Required)</strong>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Flagged By</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for admin in flagged_admins %}
+                        <tr>
+                            <td>{{ admin.username }}</td>
+                            <td>User #{{ admin.flagged_by_id }}</td>
+                            <td>
+                                <form action="{{ url_for('admin.resolve_flag', user_id=admin.id, action='dismiss') }}" method="POST" class="d-inline">
+                                    <button class="btn btn-sm btn-outline-secondary">Dismiss Flag</button>
+                                </form>
+                                <form action="{{ url_for('admin.resolve_flag', user_id=admin.id, action='revoke') }}" method="POST" class="d-inline">
+                                    <button class="btn btn-sm btn-danger">Revoke Admin</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card">
+            <div class="card-header">Staff Management</div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for staff in staff_users %}
+                        <tr>
+                            <td>{{ staff.username }}</td>
+                            <td>
+                                {% if staff.role == 'admin' %}
+                                <span class="badge bg-info">Admin</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Moderator</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if staff.is_flagged %}
+                                <span class="badge bg-danger">Flagged</span>
+                                {% else %}
+                                <span class="badge bg-success">Good</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

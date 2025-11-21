@@ -1,4 +1,5 @@
 import os
+import click
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from datetime import datetime, timedelta
@@ -150,6 +151,10 @@ def create_app(test_config=None):
             user = User.query.filter_by(username=username).first()
 
             if user and user.check_password(password):
+                if not user.is_active_user:
+                    flash('Your account has been blocked. Please contact admin.')
+                    return render_template('login.html')
+
                 login_user(user)
                 return redirect(url_for('main.index'))
             else:
@@ -388,8 +393,22 @@ def create_app(test_config=None):
                                keywords=phrase_counts,
                                advice=advice)
 
+    from .admin import admin_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(ai_bp)
+    app.register_blueprint(admin_bp)
+
+    # CLI Command to create admin
+    @app.cli.command("create-super-admin")
+    @click.argument("username")
+    @click.argument("password")
+    def create_super_admin(username, password):
+        """Create a new Super Admin (Assignment User)."""
+        user = User(username=username, role='super_admin')
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        print(f"Super Admin {username} created successfully. You can now assign other admins.")
 
     return app

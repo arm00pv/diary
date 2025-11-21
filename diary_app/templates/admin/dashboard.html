@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="text-danger">Admin Dashboard</h1>
+</div>
+
+<!-- Stats Row -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h3>{{ total_users }}</h3>
+                <p>Total Users</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h3>{{ total_entries }}</h3>
+                <p>Total Entries</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-warning text-dark">
+            <div class="card-body text-center">
+                <h3>{{ at_risk_users|length }}</h3>
+                <p>Users At Risk</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Risk Alert Section -->
+{% if at_risk_users %}
+<div class="card border-danger mb-4">
+    <div class="card-header bg-danger text-white">
+        <strong>⚠️ Risk Alerts (Low Sentiment Detected)</strong>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-striped mb-0">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Avg Sentiment (Last 5)</th>
+                    <th>Lowest Score</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in at_risk_users %}
+                <tr>
+                    <td>{{ item.user.username }}</td>
+                    <td class="text-danger font-weight-bold">{{ item.avg_sentiment }}</td>
+                    <td>{{ item.worst_score }}</td>
+                    <td>
+                        <a href="#" class="btn btn-sm btn-outline-secondary">View Logs (Mock)</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<div class="row">
+    <!-- User Management -->
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">User Management</div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Status</th>
+                            <th>Admin</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in all_users %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.username }}</td>
+                            <td>
+                                {% if user.is_active_user %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-danger">Blocked</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.is_admin %}
+                                <span class="badge bg-info">Admin</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.id != current_user.id %}
+                                <form action="{{ url_for('admin.toggle_status', user_id=user.id) }}" method="POST" class="d-inline">
+                                    <button class="btn btn-sm {% if user.is_active_user %}btn-warning{% else %}btn-success{% endif %}">
+                                        {% if user.is_active_user %}Block{% else %}Unblock{% endif %}
+                                    </button>
+                                </form>
+                                <form action="{{ url_for('admin.delete_user', user_id=user.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure?');">
+                                    <button class="btn btn-sm btn-danger">Delete</button>
+                                </form>
+                                {% else %}
+                                <span class="text-muted">Current User</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Users -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">Top Users</div>
+            <ul class="list-group list-group-flush">
+                {% for username, count in top_users %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ username }}
+                    <span class="badge bg-primary rounded-pill">{{ count }} Entries</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

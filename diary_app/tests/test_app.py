@@ -127,5 +127,69 @@ class DiaryTestCase(unittest.TestCase):
         # So we trust the unit test logic or would need to mock datetime or direct DB access.
         # For this level, we just verify the badge appears.
 
+    def test_super_admin_dashboard(self):
+        # Create Super Admin directly in DB
+        with self.app.app_context():
+            u = User(username='super', role='super_admin')
+            u.set_password('pass')
+            db.session.add(u)
+            db.session.commit()
+
+        self.login('super', 'pass')
+        rv = self.client.get('/admin/', follow_redirects=True)
+        self.assertIn(b'Super Admin Dashboard', rv.data)
+        self.assertIn(b'Assign New Staff', rv.data)
+
+    def test_moderator_action(self):
+        # Create Users directly
+        with self.app.app_context():
+            mod = User(username='mod', role='moderator')
+            mod.set_password('pass')
+            db.session.add(mod)
+
+            bad_admin = User(username='bad_admin', role='admin')
+            bad_admin.set_password('pass')
+            db.session.add(bad_admin)
+            db.session.commit()
+
+            # Capture ID for test
+            target_id = bad_admin.id
+
+        self.login('mod', 'pass')
+
+        # Flag Admin
+        rv = self.client.post(f'/admin/flag_admin/{target_id}', follow_redirects=True)
+        self.assertIn(b'has been flagged for review', rv.data)
+
+        # Verify flag in DB
+        with self.app.app_context():
+            target = User.query.get(target_id)
+            self.assertTrue(target.is_flagged)
+
+    def test_admin_block_user(self):
+        # Create Users directly
+        with self.app.app_context():
+            admin = User(username='admin', role='admin')
+            admin.set_password('pass')
+            db.session.add(admin)
+
+            normal = User(username='normal', role='user')
+            normal.set_password('pass')
+            db.session.add(normal)
+            db.session.commit()
+
+            target_id = normal.id
+
+        self.login('admin', 'pass')
+
+        # Block user
+        rv = self.client.post(f'/admin/user/{target_id}/toggle_status', follow_redirects=True)
+        self.assertIn(b'User normal has been blocked', rv.data)
+        self.logout()
+
+        # Try to login
+        rv = self.login('normal', 'pass')
+        self.assertIn(b'Your account has been blocked', rv.data)
+
 if __name__ == '__main__':
     unittest.main()

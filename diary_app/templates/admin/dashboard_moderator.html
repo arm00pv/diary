@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="text-info">Moderator Dashboard</h1>
+    <span class="badge bg-secondary">Quality Control</span>
+</div>
+
+<div class="alert alert-info">
+    Your role is to monitor Admins for correct usage. If you suspect an Admin is abusing their power (e.g., deleting users without cause), you can flag them for the Super Admin to review.
+</div>
+
+<div class="card">
+    <div class="card-header">Admin List</div>
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Admin Username</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for admin in admin_users %}
+                <tr>
+                    <td>{{ admin.username }}</td>
+                    <td>
+                        {% if admin.is_flagged %}
+                        <span class="badge bg-danger">Flagged</span>
+                        {% else %}
+                        <span class="badge bg-success">Active</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if not admin.is_flagged %}
+                        <form action="{{ url_for('admin.flag_admin', user_id=admin.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to flag this Admin?');">
+                            <button class="btn btn-sm btn-warning">⚠️ Flag as Suspicious</button>
+                        </form>
+                        {% else %}
+                        <span class="text-muted">Under Review</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

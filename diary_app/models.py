@@ -13,7 +13,32 @@ class User(UserMixin, db.Model):
     # User preferences
     theme_preference = db.Column(db.String(50), default='default')
 
-    entries = db.relationship('DiaryEntry', backref='author', lazy=True)
+    # Admin & Status
+    # Roles: 'user', 'admin', 'super_admin', 'moderator'
+    role = db.Column(db.String(20), default='user')
+    is_active_user = db.Column(db.Boolean, default=True)
+
+    # For flagging admins (Quality Control)
+    is_flagged = db.Column(db.Boolean, default=False)
+    flagged_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+
+    entries = db.relationship('DiaryEntry', backref='author', lazy=True, cascade="all, delete-orphan")
+
+    @property
+    def is_admin(self):
+        return self.role in ['admin', 'super_admin']
+
+    @property
+    def is_super_admin(self):
+        return self.role == 'super_admin'
+
+    @property
+    def is_moderator(self):
+        return self.role == 'moderator'
+
+    @property
+    def is_active(self):
+        return self.is_active_user
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
