@@ -24,6 +24,32 @@
 </div>
 {% endif %}
 
+<!-- Flashbacks -->
+{% if flashbacks %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">On This Day 🕰️</div>
+            <div class="card-body">
+                <div class="row">
+                    {% for entry in flashbacks %}
+                    <div class="col-md-4">
+                        <div class="card mb-2">
+                            <div class="card-body">
+                                <h6 class="card-subtitle mb-2 text-muted">{{ entry.entry_date.strftime('%Y') }} ({{ entry.entry_date.year - 2000 }} years ago)</h6>
+                                <p class="card-text small text-truncate">{{ entry.content }}</p>
+                                <a href="{{ url_for('main.view_entry', entry_id=entry.id) }}" class="btn btn-sm btn-outline-primary">Read</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="row mb-4">
     <div class="col-md-12">
         <form action="{{ url_for('main.index') }}" method="GET">
@@ -43,11 +69,18 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <h5 class="card-title">{{ entry.entry_date.strftime('%A, %B %d, %Y') }}</h5>
-                        {% if entry.mood %}
-                        <span class="badge bg-secondary">{{ entry.mood }}</span>
-                        {% endif %}
+                        <div>
+                            {% if entry.weather %}
+                            <span title="{{ entry.weather }}" class="me-1">
+                                {% if entry.weather == 'Sunny' %}☀️{% elif entry.weather == 'Rainy' %}🌧️{% elif entry.weather == 'Cloudy' %}☁️{% elif entry.weather == 'Snowy' %}❄️{% elif entry.weather == 'Stormy' %}⛈️{% endif %}
+                            </span>
+                            {% endif %}
+                            {% if entry.mood %}
+                            <span class="badge bg-secondary">{{ entry.mood }}</span>
+                            {% endif %}
+                        </div>
                     </div>
-                    <p class="card-text text-truncate">{{ entry.content }}</p>
+                    <p class="card-text text-truncate">{{ entry.content | safe }}</p>
 
                     {% if entry.tags %}
                     <div class="mb-2">

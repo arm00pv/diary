@@ -82,7 +82,8 @@ class DiaryTestCase(unittest.TestCase):
 
         # Search for 'Apple'
         rv = self.client.get('/?q=Apple', follow_redirects=True)
-        self.assertIn(b'Apple pie recipe', rv.data)
+        # Content is highlighted, so we look for the mark tag
+        self.assertIn(b'<mark>Apple</mark> pie recipe', rv.data)
         self.assertNotIn(b'Coding python', rv.data)
 
         # Search for tag 'work'
@@ -209,6 +210,25 @@ class DiaryTestCase(unittest.TestCase):
         self.assertEqual(rv.status_code, 200)
         self.assertIn(b'work', rv.data)
         self.assertIn(b'busy', rv.data)
+
+    def test_weather_and_search_highlight(self):
+        self.register('weather_user', 'pass')
+
+        self.client.post('/entry/new', data=dict(
+            content='It is a rainy day in London.',
+            entry_date='2023-11-15',
+            mood='Sad',
+            weather='Rainy'
+        ))
+
+        # Verify DB
+        with self.app.app_context():
+            user = User.query.filter_by(username='weather_user').first()
+            self.assertEqual(user.entries[0].weather, 'Rainy')
+
+        # Verify Search Highlight
+        rv = self.client.get('/?q=London')
+        self.assertIn(b'<mark>London</mark>', rv.data)
 
     def test_super_admin_dashboard(self):
         # Create Super Admin directly in DB

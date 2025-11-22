@@ -2,10 +2,12 @@ import os
 import click
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+import re
 from datetime import datetime, timedelta
 from werkzeug.exceptions import abort
 from textblob import TextBlob
 from collections import Counter
+from sqlalchemy import extract
 from .ai_utils import detect_dominant_emotion
 from .gamification import check_badges, BADGE_DEFINITIONS
 from .quotes import get_random_quote
@@ -272,26 +274,44 @@ def create_app(test_config=None):
     @main_bp.route('/')
     @login_required
     def index():
-        """Dashboard showing diary entries and search results."""
+        """Dashboard showing diary entries, search results, and flashbacks."""
         quote = get_random_quote()
+        today = datetime.utcnow().date()
 
         query = request.args.get('q')
+
+        # 1. Search Logic with Highlighting
         if query:
-            # Simple search: content or tags
             entries = DiaryEntry.query.filter(
                 DiaryEntry.user_id == current_user.id,
                 (DiaryEntry.content.contains(query) | DiaryEntry.tags.contains(query))
             ).order_by(DiaryEntry.entry_date.desc()).all()
+
+            # Highlight terms (simple approach, cautious of HTML)
+            # In production, use a sanitizer before highlighting.
+            for entry in entries:
+                # Case-insensitive replacement
+                pattern = re.compile(re.escape(query), re.IGNORECASE)
+                entry.content = pattern.sub(lambda m: f'<mark>{m.group(0)}</mark>', entry.content)
+
         else:
             entries = DiaryEntry.query.filter_by(user_id=current_user.id).order_by(DiaryEntry.entry_date.desc()).all()
 
+        # 2. On This Day Logic (Flashbacks)
+        flashbacks = []
+        if not query: # Only show flashbacks on main dashboard, not search results
+            flashbacks = DiaryEntry.query.filter(
+                DiaryEntry.user_id == current_user.id,
+                extract('month', DiaryEntry.entry_date) == today.month,
+                extract('day', DiaryEntry.entry_date) == today.day,
+                extract('year', DiaryEntry.entry_date) != today.year
+            ).all()
+
         # Calculate Streak
-        # We query all entries for streak calculation to be accurate even if search is applied on UI,
-        # but for efficiency, we could just fetch dates. Here we use the user's all entries.
         all_user_entries = DiaryEntry.query.filter_by(user_id=current_user.id).all()
         streak = calculate_streak(all_user_entries)
 
-        return render_template('index.html', entries=entries, streak=streak, quote=quote)
+        return render_template('index.html', entries=entries, streak=streak, quote=quote, flashbacks=flashbacks)
 
     # Context Processor to inject theme URL into all templates
     @app.context_processor
@@ -320,6 +340,7 @@ def create_app(test_config=None):
             content = request.form.get('content')
             date_str = request.form.get('entry_date')
             mood = request.form.get('mood')
+            weather = request.form.get('weather')
             tags = request.form.get('tags')
 
             try:
@@ -338,6 +359,7 @@ def create_app(test_config=None):
                 content=content,
                 entry_date=entry_date,
                 mood=mood,
+                weather=weather,
                 tags=tags,
                 sentiment_score=sentiment,
                 dominant_emotion=emotion
@@ -373,6 +395,7 @@ def create_app(test_config=None):
             entry.content = request.form.get('content')
             date_str = request.form.get('entry_date')
             entry.mood = request.form.get('mood')
+            entry.weather = request.form.get('weather')
             entry.tags = request.form.get('tags')
 
             # Recalculate sentiment and emotion

@@ -14,11 +14,25 @@
             </div>
             <div class="card-body">
                 <form method="POST">
-                    <div class="mb-3">
-                        <label for="entry_date" class="form-label">Date</label>
-                        <input type="date" class="form-control" id="entry_date" name="entry_date"
-                               value="{{ entry.entry_date.strftime('%Y-%m-%d') if entry else today }}" required>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="entry_date" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="entry_date" name="entry_date"
+                                   value="{{ entry.entry_date.strftime('%Y-%m-%d') if entry else today }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="weather" class="form-label">Weather</label>
+                            <select class="form-select" id="weather" name="weather">
+                                <option value="" {% if not entry or not entry.weather %}selected{% endif %}>Unknown</option>
+                                <option value="Sunny" {% if entry and entry.weather == 'Sunny' %}selected{% endif %}>☀️ Sunny</option>
+                                <option value="Rainy" {% if entry and entry.weather == 'Rainy' %}selected{% endif %}>🌧️ Rainy</option>
+                                <option value="Cloudy" {% if entry and entry.weather == 'Cloudy' %}selected{% endif %}>☁️ Cloudy</option>
+                                <option value="Snowy" {% if entry and entry.weather == 'Snowy' %}selected{% endif %}>❄️ Snowy</option>
+                                <option value="Stormy" {% if entry and entry.weather == 'Stormy' %}selected{% endif %}>⛈️ Stormy</option>
+                            </select>
+                        </div>
                     </div>
+
                     <div class="mb-3">
                         <label for="mood" class="form-label">Mood</label>
                         <select class="form-select" id="mood" name="mood">

@@ -75,4 +75,5 @@ class DiaryEntry(db.Model):
     # New fields for AI and Organization
     sentiment_score = db.Column(db.Float, default=0.0) # -1.0 (Negative) to 1.0 (Positive)
     dominant_emotion = db.Column(db.String(50), default='neutral') # AI detected emotion
+    weather = db.Column(db.String(20), nullable=True) # Sunny, Rainy, etc.
     tags = db.Column(db.String(200), nullable=True) # Comma separated tags
