@@ -6,6 +6,16 @@
     <title>Diary App</title>
     <link href="{{ current_theme_url }}" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* Font Customization */
+        {% if current_user.is_authenticated %}
+            {% if current_user.font_preference == 'serif' %}
+                body { font-family: 'Georgia', serif !important; }
+            {% elif current_user.font_preference == 'mono' %}
+                body { font-family: 'Courier New', monospace !important; }
+            {% endif %}
+        {% endif %}
+    </style>
   </head>
   <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">

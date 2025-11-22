@@ -12,6 +12,8 @@ class User(UserMixin, db.Model):
 
     # User preferences
     theme_preference = db.Column(db.String(50), default='default')
+    font_preference = db.Column(db.String(20), default='sans') # 'sans', 'serif', 'mono'
+    avatar_emoji = db.Column(db.String(10), default='👤')
 
     # Admin & Status
     # Roles: 'user', 'admin', 'super_admin', 'moderator'

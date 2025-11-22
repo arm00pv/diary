@@ -198,13 +198,21 @@ def create_app(test_config=None):
     @main_bp.route('/settings', methods=['GET', 'POST'])
     @login_required
     def settings():
-        """User settings page for changing themes."""
+        """User settings page for changing themes and preferences."""
         if request.method == 'POST':
             theme = request.form.get('theme')
+            font = request.form.get('font')
+            avatar = request.form.get('avatar')
+
             if theme:
                 current_user.theme_preference = theme
-                db.session.commit()
-                flash('Theme updated successfully!')
+            if font:
+                current_user.font_preference = font
+            if avatar:
+                current_user.avatar_emoji = avatar
+
+            db.session.commit()
+            flash('Preferences updated successfully!')
             return redirect(url_for('main.settings'))
 
         return render_template('settings.html')

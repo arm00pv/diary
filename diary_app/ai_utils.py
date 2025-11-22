@@ -31,6 +31,14 @@ EMOTION_LEXICON = {
     ]
 }
 
+EMOJI_LEXICON = {
+    'joy': ['😀', '😃', '😄', '😁', '😆', '😂', '🤣', '😊', '🥰', '😍', '🤩', '🥳', '🎉', '✨', '💖'],
+    'sadness': ['😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '💔'],
+    'anger': ['😤', '😠', '😡', '🤬', '🤯', '💢', '👿', '👎', '🖕'],
+    'fear': ['😨', '😰', '😥', '😓', '😱', '😖', '😬'],
+    'surprise': ['😮', '😯', '😲', '😳', '🤯', '🙀']
+}
+
 def detect_dominant_emotion(text):
     """
     Analyzes text and returns the dominant emotion based on keyword frequency.
@@ -50,6 +58,12 @@ def detect_dominant_emotion(text):
         for emotion, keywords in EMOTION_LEXICON.items():
             if word in keywords:
                 scores[emotion] += 1
+
+    # Scan for emojis (Give them double weight)
+    for char in text:
+        for emotion, emojis in EMOJI_LEXICON.items():
+            if char in emojis:
+                scores[emotion] += 2
 
     if not scores:
         return 'neutral'

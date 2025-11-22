@@ -103,7 +103,7 @@ class DiaryTestCase(unittest.TestCase):
 
         # Change theme to dark
         rv = self.client.post('/settings', data=dict(theme='dark'), follow_redirects=True)
-        self.assertIn(b'Theme updated successfully', rv.data)
+        self.assertIn(b'Preferences updated successfully', rv.data)
 
         # Verify dark theme is loaded
         rv = self.client.get('/')
@@ -151,6 +151,22 @@ class DiaryTestCase(unittest.TestCase):
             user = User.query.filter_by(username='emo_user').first()
             entry = user.entries[1]
             self.assertEqual(entry.dominant_emotion, 'joy')
+
+    def test_emoji_emotion(self):
+        self.register('emoji_user', 'pass')
+
+        # Entry with just emojis
+        self.client.post('/entry/new', data=dict(
+            content='😭😭😭',
+            entry_date='2023-11-05',
+            mood='Sad'
+        ))
+
+        with self.app.app_context():
+            user = User.query.filter_by(username='emoji_user').first()
+            entry = user.entries[0]
+            # Should detect sadness from emojis
+            self.assertEqual(entry.dominant_emotion, 'sadness')
 
     def test_badges_and_export(self):
         self.register('badge_user', 'pass')

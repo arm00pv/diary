@@ -38,11 +38,34 @@
                         <label for="content" class="form-label">What's on your mind?</label>
                         <div class="input-group">
                             <textarea class="form-control" id="content" name="content" rows="10" required>{{ entry.content if entry else '' }}</textarea>
+                            <button class="btn btn-outline-secondary" type="button" id="emoji-btn" title="Insert Emoji">
+                                😀
+                            </button>
                             <button class="btn btn-outline-secondary" type="button" id="mic-btn" title="Dictate Entry">
                                 🎤
                             </button>
                         </div>
                         <small class="text-muted" id="mic-status" style="display: none;">Listening...</small>
+
+                        <!-- Simple Emoji Picker (Hidden by default) -->
+                        <div id="emoji-picker" class="card p-2 mt-1" style="display: none; position: absolute; z-index: 1000; max-width: 300px;">
+                            <div class="d-flex flex-wrap" style="gap: 5px;">
+                                <button type="button" class="btn btn-sm btn-light emoji-insert">😀</button>
+                                <button type="button" class="btn btn-sm btn-light emoji-insert">😂</button>
+                                <button type="button" class="btn btn-sm btn-light emoji-insert">😍</button>
+                                <button type="button" class="btn btn-sm btn-light emoji-insert">😭</button>
+                                <button type="button" class="btn btn-sm btn-light emoji-insert">😡</button>
+                                <button type="button" class="btn btn-sm btn-light emoji-insert">😱</button>
+                                <button type="button" class="btn btn-sm btn-light emoji-insert">👍</button>
+                                <button type="button" class="btn btn-sm btn-light emoji-insert">🎉</button>
+                                <button type="button" class="btn btn-sm btn-light emoji-insert">❤️</button>
+                                <button type="button" class="btn btn-sm btn-light emoji-insert">✨</button>
+                                <button type="button" class="btn btn-sm btn-light emoji-insert">🔥</button>
+                                <button type="button" class="btn btn-sm btn-light emoji-insert">🙏</button>
+                                <button type="button" class="btn btn-sm btn-light emoji-insert">🤔</button>
+                                <button type="button" class="btn btn-sm btn-light emoji-insert">😴</button>
+                            </div>
+                        </div>
                     </div>
                     <div class="d-flex justify-content-between">
                         <a href="{{ url_for('main.index') }}" class="btn btn-secondary">Cancel</a>
@@ -83,6 +106,35 @@
     const micBtn = document.getElementById('mic-btn');
     const micStatus = document.getElementById('mic-status');
     const contentArea = document.getElementById('content');
+    const emojiBtn = document.getElementById('emoji-btn');
+    const emojiPicker = document.getElementById('emoji-picker');
+
+    // Emoji Picker Toggle
+    emojiBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        emojiPicker.style.display = emojiPicker.style.display === 'none' ? 'block' : 'none';
+
+        // Position logic (simple)
+        const rect = emojiBtn.getBoundingClientRect();
+        emojiPicker.style.top = (window.scrollY + rect.bottom + 5) + 'px';
+        emojiPicker.style.left = (window.scrollX + rect.left - 200) + 'px';
+    });
+
+    // Insert Emoji
+    document.querySelectorAll('.emoji-insert').forEach(btn => {
+        btn.addEventListener('click', () => {
+            contentArea.value += btn.innerText;
+            emojiPicker.style.display = 'none';
+            contentArea.focus();
+        });
+    });
+
+    // Close picker on outside click
+    document.addEventListener('click', (e) => {
+        if (!emojiPicker.contains(e.target) && e.target !== emojiBtn) {
+            emojiPicker.style.display = 'none';
+        }
+    });
 
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
