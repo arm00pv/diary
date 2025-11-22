@@ -190,6 +190,26 @@ class DiaryTestCase(unittest.TestCase):
         self.assertIn(b'My first entry!', rv.data)
         self.assertIn('diary_export.json', rv.headers['Content-Disposition'])
 
+    def test_calendar_tags(self):
+        self.register('cal_user', 'pass')
+        self.client.post('/entry/new', data=dict(
+            content='Meeting #work',
+            entry_date='2023-11-10',
+            mood='Neutral',
+            tags='work, busy'
+        ))
+
+        # Test Calendar Access
+        rv = self.client.get('/calendar')
+        self.assertEqual(rv.status_code, 200)
+        self.assertIn(b'Neutral', rv.data) # Check title (Mood) present in events JSON
+
+        # Test Tags Page
+        rv = self.client.get('/tags')
+        self.assertEqual(rv.status_code, 200)
+        self.assertIn(b'work', rv.data)
+        self.assertIn(b'busy', rv.data)
+
     def test_super_admin_dashboard(self):
         # Create Super Admin directly in DB
         with self.app.app_context():

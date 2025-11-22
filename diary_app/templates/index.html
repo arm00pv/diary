@@ -11,6 +11,19 @@
     <a href="{{ url_for('main.new_entry') }}" class="btn btn-primary">New Entry</a>
 </div>
 
+<!-- Quote Widget -->
+{% if quote %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card bg-light border-0">
+            <div class="card-body text-center fst-italic text-muted">
+                "{{ quote }}"
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="row mb-4">
     <div class="col-md-12">
         <form action="{{ url_for('main.index') }}" method="GET">

@@ -8,6 +8,7 @@ from textblob import TextBlob
 from collections import Counter
 from .ai_utils import detect_dominant_emotion
 from .gamification import check_badges, BADGE_DEFINITIONS
+from .quotes import get_random_quote
 
 # Import models and db
 from .models import db, User, DiaryEntry
@@ -195,6 +196,57 @@ def create_app(test_config=None):
         return redirect(url_for('auth.login'))
 
     # Main Routes
+    @main_bp.route('/tags')
+    @login_required
+    def tags():
+        """View all tags and their frequencies."""
+        entries = DiaryEntry.query.filter_by(user_id=current_user.id).all()
+        tag_counts = Counter()
+
+        for e in entries:
+            if e.tags:
+                # Split by comma and strip whitespace
+                tags_list = [t.strip() for t in e.tags.split(',') if t.strip()]
+                tag_counts.update(tags_list)
+
+        return render_template('tags.html', tags=tag_counts.most_common())
+
+    @main_bp.route('/calendar')
+    @login_required
+    def calendar():
+        """View entries in a calendar format."""
+        entries = DiaryEntry.query.filter_by(user_id=current_user.id).all()
+        events = []
+
+        # Map moods/emotions to colors
+        color_map = {
+            'joy': '#198754', # Green
+            'happy': '#198754',
+            'sadness': '#0d6efd', # Blue
+            'sad': '#0d6efd',
+            'anger': '#dc3545', # Red
+            'angry': '#dc3545',
+            'fear': '#6f42c1', # Purple
+            'anxious': '#6f42c1',
+            'neutral': '#6c757d', # Gray
+            'surprise': '#ffc107' # Yellow
+        }
+
+        for e in entries:
+            # Determine color based on dominant emotion or mood
+            key = e.dominant_emotion if e.dominant_emotion != 'neutral' else (e.mood.lower() if e.mood else 'neutral')
+            color = color_map.get(key, '#6c757d')
+
+            events.append({
+                'title': e.mood or e.dominant_emotion or 'Entry',
+                'start': e.entry_date.strftime('%Y-%m-%d'),
+                'url': url_for('main.view_entry', entry_id=e.id),
+                'backgroundColor': color,
+                'borderColor': color
+            })
+
+        return render_template('calendar.html', events=events)
+
     @main_bp.route('/settings', methods=['GET', 'POST'])
     @login_required
     def settings():
@@ -221,6 +273,8 @@ def create_app(test_config=None):
     @login_required
     def index():
         """Dashboard showing diary entries and search results."""
+        quote = get_random_quote()
+
         query = request.args.get('q')
         if query:
             # Simple search: content or tags
@@ -237,7 +291,7 @@ def create_app(test_config=None):
         all_user_entries = DiaryEntry.query.filter_by(user_id=current_user.id).all()
         streak = calculate_streak(all_user_entries)
 
-        return render_template('index.html', entries=entries, streak=streak)
+        return render_template('index.html', entries=entries, streak=streak, quote=quote)
 
     # Context Processor to inject theme URL into all templates
     @app.context_processor
