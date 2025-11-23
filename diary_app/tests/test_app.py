@@ -230,6 +230,19 @@ class DiaryTestCase(unittest.TestCase):
         rv = self.client.get('/?q=London')
         self.assertIn(b'<mark>London</mark>', rv.data)
 
+    def test_markdown_rendering(self):
+        self.register('md_user', 'pass')
+
+        self.client.post('/entry/new', data=dict(
+            content='**Bold Text**',
+            entry_date='2023-11-20',
+            mood='Neutral'
+        ))
+
+        rv = self.client.get('/')
+        # Should contain converted HTML
+        self.assertIn(b'<strong>Bold Text</strong>', rv.data)
+
     def test_super_admin_dashboard(self):
         # Create Super Admin directly in DB
         with self.app.app_context():

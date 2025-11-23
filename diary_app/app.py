@@ -3,6 +3,8 @@ import click
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 import re
+import json
+import markdown
 from datetime import datetime, timedelta
 from werkzeug.exceptions import abort
 from textblob import TextBlob
@@ -271,6 +273,27 @@ def create_app(test_config=None):
 
         return render_template('settings.html')
 
+    @main_bp.route('/settings/profile', methods=['POST'])
+    @login_required
+    def update_profile():
+        """Update user profile (username/password)."""
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        if username and username != current_user.username:
+            # Check if taken
+            if User.query.filter_by(username=username).first():
+                flash('Username already taken.')
+                return redirect(url_for('main.settings'))
+            current_user.username = username
+
+        if password:
+            current_user.set_password(password)
+
+        db.session.commit()
+        flash('Profile updated successfully!')
+        return redirect(url_for('main.settings'))
+
     @main_bp.route('/')
     @login_required
     def index():
@@ -312,6 +335,13 @@ def create_app(test_config=None):
         streak = calculate_streak(all_user_entries)
 
         return render_template('index.html', entries=entries, streak=streak, quote=quote, flashbacks=flashbacks)
+
+    # Markdown Filter
+    @app.template_filter('markdown')
+    def markdown_filter(text):
+        if not text:
+            return ""
+        return markdown.markdown(text)
 
     # Context Processor to inject theme URL into all templates
     @app.context_processor
@@ -553,6 +583,7 @@ def create_app(test_config=None):
                 'date': e.entry_date.strftime('%Y-%m-%d'),
                 'content': e.content,
                 'mood': e.mood,
+                'weather': e.weather,
                 'emotion': e.dominant_emotion,
                 'sentiment': e.sentiment_score,
                 'tags': e.tags
@@ -561,6 +592,60 @@ def create_app(test_config=None):
         response = jsonify(data)
         response.headers.set('Content-Disposition', 'attachment; filename=diary_export.json')
         return response
+
+    @main_bp.route('/import', methods=['POST'])
+    @login_required
+    def import_data():
+        """Import entries from a JSON file."""
+        if 'file' not in request.files:
+            flash('No file part')
+            return redirect(url_for('main.settings'))
+
+        file = request.files['file']
+        if file.filename == '':
+            flash('No selected file')
+            return redirect(url_for('main.settings'))
+
+        if file:
+            try:
+                data = json.load(file)
+                count = 0
+                for item in data:
+                    # Basic validation
+                    if 'content' not in item or 'date' not in item:
+                        continue
+
+                    entry_date = datetime.strptime(item['date'], '%Y-%m-%d').date()
+
+                    # Check for duplicate (same date and same content start)
+                    # Or simpler: allow multiple entries per day, but check exact content match
+                    exists = DiaryEntry.query.filter_by(
+                        user_id=current_user.id,
+                        entry_date=entry_date,
+                        content=item['content']
+                    ).first()
+
+                    if not exists:
+                        new_entry = DiaryEntry(
+                            user_id=current_user.id,
+                            content=item['content'],
+                            entry_date=entry_date,
+                            mood=item.get('mood'),
+                            weather=item.get('weather'),
+                            tags=item.get('tags'),
+                            dominant_emotion=item.get('emotion', detect_dominant_emotion(item['content'])),
+                            sentiment_score=item.get('sentiment', TextBlob(item['content']).sentiment.polarity)
+                        )
+                        db.session.add(new_entry)
+                        count += 1
+
+                db.session.commit()
+                flash(f'Successfully imported {count} entries!')
+
+            except Exception as e:
+                flash(f'Error importing data: {str(e)}')
+
+        return redirect(url_for('main.settings'))
 
     from .admin import admin_bp
     app.register_blueprint(auth_bp)

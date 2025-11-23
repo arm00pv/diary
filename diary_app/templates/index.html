@@ -80,7 +80,9 @@
                             {% endif %}
                         </div>
                     </div>
-                    <p class="card-text text-truncate">{{ entry.content | safe }}</p>
+                    <div class="card-text text-truncate" style="max-height: 100px; overflow: hidden;">
+                        {{ entry.content | markdown | safe }}
+                    </div>
 
                     {% if entry.tags %}
                     <div class="mb-2">

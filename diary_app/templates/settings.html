@@ -3,10 +3,29 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">Settings</div>
+
+        <!-- Profile Settings -->
+        <div class="card mb-4">
+            <div class="card-header">Profile Settings</div>
             <div class="card-body">
-                <h5 class="card-title">Appearance</h5>
+                <form action="{{ url_for('main.update_profile') }}" method="POST">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Change Username</label>
+                        <input type="text" class="form-control" id="username" name="username" value="{{ current_user.username }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Change Password</label>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Leave blank to keep current">
+                    </div>
+                    <button type="submit" class="btn btn-warning">Update Profile</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Appearance</div>
+            <div class="card-body">
+                <h5 class="card-title">Theme & Style</h5>
                 <form method="POST">
                     <div class="mb-3">
                         <label for="theme" class="form-label">Theme Selection</label>
@@ -59,6 +78,16 @@
                 <a href="{{ url_for('main.export_data') }}" class="btn btn-outline-secondary">
                     ⬇️ Export Data (JSON)
                 </a>
+
+                <hr>
+
+                <form action="{{ url_for('main.import_data') }}" method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Import Data (JSON)</label>
+                        <input class="form-control" type="file" id="file" name="file" accept=".json" required>
+                    </div>
+                    <button type="submit" class="btn btn-outline-warning">⬆️ Restore / Import</button>
+                </form>
             </div>
         </div>
     </div>

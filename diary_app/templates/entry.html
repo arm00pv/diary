@@ -49,9 +49,12 @@
                         <input type="text" class="form-control" id="tags" name="tags" placeholder="e.g., work, family, vacation" value="{{ entry.tags if entry and entry.tags else '' }}">
                     </div>
                     <div class="mb-3">
-                        <label for="content" class="form-label">What's on your mind?</label>
+                        <div class="d-flex justify-content-between">
+                            <label for="content" class="form-label">What's on your mind?</label>
+                            <a href="#" class="text-decoration-none small" data-bs-toggle="modal" data-bs-target="#markdownHelp">Markdown Supported</a>
+                        </div>
                         <div class="input-group">
-                            <textarea class="form-control" id="content" name="content" rows="10" required>{{ entry.content if entry else '' }}</textarea>
+                            <textarea class="form-control" id="content" name="content" rows="10" required placeholder="You can use **bold**, *italics*, or - lists">{{ entry.content if entry else '' }}</textarea>
                             <button class="btn btn-outline-secondary" type="button" id="emoji-btn" title="Insert Emoji">
                                 😀
                             </button>
@@ -89,6 +92,13 @@
 
                 {% if entry %}
                 <hr>
+                <div class="card mt-4">
+                    <div class="card-header">Preview</div>
+                    <div class="card-body">
+                        {{ entry.content | markdown | safe }}
+                    </div>
+                </div>
+                <hr>
                 <form method="POST" action="{{ url_for('main.delete_entry', entry_id=entry.id) }}" onsubmit="return confirm('Are you sure?');">
                     <button type="submit" class="btn btn-danger btn-sm">Delete Entry</button>
                 </form>
@@ -96,6 +106,28 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- Markdown Help Modal -->
+<div class="modal fade" id="markdownHelp" tabindex="-1" aria-labelledby="markdownHelpLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="markdownHelpLabel">Markdown Cheat Sheet</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <ul>
+            <li><strong>**Bold**</strong> for <strong>Bold</strong></li>
+            <li><em>*Italics*</em> for <em>Italics</em></li>
+            <li># Heading 1 for Header</li>
+            <li>## Heading 2 for Subheader</li>
+            <li>- List item for Bullets</li>
+            <li>[Link](http://example.com) for Links</li>
+        </ul>
+      </div>
+    </div>
+  </div>
 </div>
 
 <style>
