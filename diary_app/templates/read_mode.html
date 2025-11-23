@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width: 800px;">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <h1 class="display-4" style="font-family: 'Georgia', serif;">My Story</h1>
+        <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">Exit Reading Mode</a>
+    </div>
+
+    {% if entries %}
+        {% for entry in entries %}
+        <div class="mb-5 pb-5 border-bottom">
+            <div class="text-center mb-4">
+                <h2 style="font-family: 'Georgia', serif;">{{ entry.entry_date.strftime('%B %d, %Y') }}</h2>
+                <div class="text-muted small">
+                    {{ entry.entry_date.strftime('%A') }}
+                    {% if entry.weather %} • {{ entry.weather }} {% endif %}
+                    {% if entry.mood %} • Mood: {{ entry.mood }} {% endif %}
+                </div>
+            </div>
+
+            <div class="entry-content" style="font-size: 1.2rem; line-height: 1.8; font-family: 'Georgia', serif;">
+                {{ entry.content | markdown | safe }}
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="text-center mt-5 mb-5">
+            <p class="text-muted">The End (for now...)</p>
+        </div>
+    {% else %}
+        <div class="text-center py-5">
+            <p class="lead">Your story hasn't begun yet. Start writing today!</p>
+            <a href="{{ url_for('main.new_entry') }}" class="btn btn-primary">Write First Entry</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

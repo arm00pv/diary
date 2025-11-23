@@ -1,7 +1,7 @@
 import unittest
 from diary_app.app import create_app, db
 from diary_app.models import User, DiaryEntry
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class DiaryTestCase(unittest.TestCase):
     def setUp(self):
@@ -242,6 +242,26 @@ class DiaryTestCase(unittest.TestCase):
         rv = self.client.get('/')
         # Should contain converted HTML
         self.assertIn(b'<strong>Bold Text</strong>', rv.data)
+
+    def test_locked_entry(self):
+        self.register('future_user', 'pass')
+
+        future_date = (datetime.utcnow() + timedelta(days=30)).strftime('%Y-%m-%d')
+
+        self.client.post('/entry/new', data=dict(
+            content='Secret Future Message',
+            entry_date='2023-11-25',
+            unlock_date=future_date
+        ))
+
+        # Check Index (Should NOT see message)
+        rv = self.client.get('/')
+        self.assertNotIn(b'Secret Future Message', rv.data)
+
+        # Check DB
+        with self.app.app_context():
+            user = User.query.filter_by(username='future_user').first()
+            self.assertTrue(user.entries[0].is_locked)
 
     def test_super_admin_dashboard(self):
         # Create Super Admin directly in DB

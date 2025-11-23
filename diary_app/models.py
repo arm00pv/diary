@@ -77,3 +77,7 @@ class DiaryEntry(db.Model):
     dominant_emotion = db.Column(db.String(50), default='neutral') # AI detected emotion
     weather = db.Column(db.String(20), nullable=True) # Sunny, Rainy, etc.
     tags = db.Column(db.String(200), nullable=True) # Comma separated tags
+
+    # Time Capsule
+    is_locked = db.Column(db.Boolean, default=False)
+    unlock_date = db.Column(db.Date, nullable=True)

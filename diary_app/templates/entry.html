@@ -4,7 +4,8 @@
 <div class="row justify-content-center" id="entry-container">
     <div class="col-md-8 transition-all" id="main-col">
 
-        <div class="d-flex justify-content-end mb-2">
+        <div class="d-flex justify-content-end mb-2 gap-2">
+            <button type="button" class="btn btn-outline-info btn-sm" id="inspire-btn">💡 Inspire Me</button>
             <button type="button" class="btn btn-outline-secondary btn-sm" id="zen-mode-btn">Zen Mode 🧘</button>
         </div>
 
@@ -48,6 +49,16 @@
                         <label for="tags" class="form-label">Tags (comma separated)</label>
                         <input type="text" class="form-control" id="tags" name="tags" placeholder="e.g., work, family, vacation" value="{{ entry.tags if entry and entry.tags else '' }}">
                     </div>
+
+                    <!-- Time Capsule -->
+                    <div class="mb-3">
+                        <label for="unlock_date" class="form-label text-muted">Time Capsule (Unlock Date)</label>
+                        <input type="date" class="form-control form-control-sm" id="unlock_date" name="unlock_date"
+                               placeholder="Leave empty for standard entry"
+                               value="{{ entry.unlock_date.strftime('%Y-%m-%d') if entry and entry.unlock_date else '' }}">
+                        <div class="form-text">If set to a future date, this entry will be hidden until then.</div>
+                    </div>
+
                     <div class="mb-3">
                         <div class="d-flex justify-content-between">
                             <label for="content" class="form-label">What's on your mind?</label>
@@ -242,5 +253,18 @@
         micBtn.style.display = 'none';
         console.log("Web Speech API not supported");
     }
+
+    // Inspire Me
+    const inspireBtn = document.getElementById('inspire-btn');
+    inspireBtn.addEventListener('click', () => {
+        fetch('/api/prompt')
+            .then(response => response.json())
+            .then(data => {
+                // Insert prompt at start of textarea
+                const promptText = `**Prompt: ${data.prompt}**\n\n`;
+                contentArea.value = promptText + contentArea.value;
+                contentArea.focus();
+            });
+    });
 </script>
 {% endblock %}

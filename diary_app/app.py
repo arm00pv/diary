@@ -13,6 +13,7 @@ from sqlalchemy import extract
 from .ai_utils import detect_dominant_emotion
 from .gamification import check_badges, BADGE_DEFINITIONS
 from .quotes import get_random_quote
+from .prompts import get_random_prompt
 
 # Import models and db
 from .models import db, User, DiaryEntry
@@ -215,6 +216,24 @@ def create_app(test_config=None):
 
         return render_template('tags.html', tags=tag_counts.most_common())
 
+    @main_bp.route('/api/prompt')
+    @login_required
+    def api_prompt():
+        """Get a random writing prompt."""
+        return jsonify({'prompt': get_random_prompt()})
+
+    @main_bp.route('/read')
+    @login_required
+    def read_mode():
+        """Reading Mode: Chronological view of unlocked entries."""
+        today = datetime.utcnow().date()
+        entries = DiaryEntry.query.filter(
+            DiaryEntry.user_id == current_user.id,
+            (DiaryEntry.is_locked == False) | (DiaryEntry.unlock_date <= today)
+        ).order_by(DiaryEntry.entry_date.asc()).all()
+
+        return render_template('read_mode.html', entries=entries)
+
     @main_bp.route('/calendar')
     @login_required
     def calendar():
@@ -307,7 +326,9 @@ def create_app(test_config=None):
         if query:
             entries = DiaryEntry.query.filter(
                 DiaryEntry.user_id == current_user.id,
-                (DiaryEntry.content.contains(query) | DiaryEntry.tags.contains(query))
+                (DiaryEntry.content.contains(query) | DiaryEntry.tags.contains(query)),
+                # Filter out locked entries
+                (DiaryEntry.is_locked == False) | (DiaryEntry.unlock_date <= today)
             ).order_by(DiaryEntry.entry_date.desc()).all()
 
             # Highlight terms (simple approach, cautious of HTML)
@@ -318,7 +339,11 @@ def create_app(test_config=None):
                 entry.content = pattern.sub(lambda m: f'<mark>{m.group(0)}</mark>', entry.content)
 
         else:
-            entries = DiaryEntry.query.filter_by(user_id=current_user.id).order_by(DiaryEntry.entry_date.desc()).all()
+            # Show unlocked entries (or locked ones that have expired)
+            entries = DiaryEntry.query.filter(
+                DiaryEntry.user_id == current_user.id,
+                (DiaryEntry.is_locked == False) | (DiaryEntry.unlock_date <= today)
+            ).order_by(DiaryEntry.entry_date.desc()).all()
 
         # 2. On This Day Logic (Flashbacks)
         flashbacks = []
@@ -373,6 +398,18 @@ def create_app(test_config=None):
             weather = request.form.get('weather')
             tags = request.form.get('tags')
 
+            # Time Capsule
+            unlock_date_str = request.form.get('unlock_date')
+            unlock_date = None
+            is_locked = False
+            if unlock_date_str:
+                try:
+                    unlock_date = datetime.strptime(unlock_date_str, '%Y-%m-%d').date()
+                    if unlock_date > datetime.utcnow().date():
+                        is_locked = True
+                except ValueError:
+                    pass
+
             try:
                 entry_date = datetime.strptime(date_str, '%Y-%m-%d').date()
             except ValueError:
@@ -392,7 +429,9 @@ def create_app(test_config=None):
                 weather=weather,
                 tags=tags,
                 sentiment_score=sentiment,
-                dominant_emotion=emotion
+                dominant_emotion=emotion,
+                is_locked=is_locked,
+                unlock_date=unlock_date
             )
             db.session.add(entry)
             db.session.commit()
