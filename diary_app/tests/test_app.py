@@ -263,6 +263,35 @@ class DiaryTestCase(unittest.TestCase):
             user = User.query.filter_by(username='future_user').first()
             self.assertTrue(user.entries[0].is_locked)
 
+    def test_gratitude_jar(self):
+        self.register('gratitude_user', 'pass')
+        self.client.post('/gratitude', data=dict(content='Family'))
+
+        rv = self.client.get('/gratitude')
+        self.assertIn(b'Family', rv.data)
+
+    def test_community_feed(self):
+        self.register('comm_user', 'pass')
+
+        # Private entry
+        self.client.post('/entry/new', data=dict(
+            content='Private secret',
+            entry_date='2023-12-01',
+            mood='Neutral'
+        ))
+
+        # Public entry
+        self.client.post('/entry/new', data=dict(
+            content='Hello World',
+            entry_date='2023-12-01',
+            mood='Happy',
+            is_public='1'
+        ))
+
+        rv = self.client.get('/community')
+        self.assertIn(b'Hello World', rv.data)
+        self.assertNotIn(b'Private secret', rv.data)
+
     def test_super_admin_dashboard(self):
         # Create Super Admin directly in DB
         with self.app.app_context():

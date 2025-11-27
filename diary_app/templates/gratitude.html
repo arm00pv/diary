@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="max-width: 800px;">
+    <div class="text-center mb-5">
+        <h1 class="display-4 text-warning">Gratitude Jar 🌟</h1>
+        <p class="lead">Collect small moments of joy.</p>
+    </div>
+
+    <div class="card mb-5 border-warning">
+        <div class="card-body">
+            <form method="POST">
+                <div class="input-group">
+                    <input type="text" class="form-control" name="content" placeholder="I am grateful for..." required>
+                    <button class="btn btn-warning" type="submit">Add to Jar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
+        {% for note in notes %}
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 bg-light border-0 shadow-sm note-card">
+                <div class="card-body text-center d-flex align-items-center justify-content-center">
+                    <p class="card-text fst-italic">"{{ note.content }}"</p>
+                </div>
+                <div class="card-footer bg-transparent border-0 text-end text-muted small">
+                    {{ note.created_at.strftime('%b %d') }}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12 text-center text-muted">
+            <p>Your jar is empty. Add something you are thankful for!</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+    .note-card { transition: transform 0.2s; }
+    .note-card:hover { transform: scale(1.05); }
+</style>
+{% endblock %}

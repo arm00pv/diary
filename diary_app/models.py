@@ -81,3 +81,13 @@ class DiaryEntry(db.Model):
     # Time Capsule
     is_locked = db.Column(db.Boolean, default=False)
     unlock_date = db.Column(db.Date, nullable=True)
+
+    # Community Feed
+    is_public = db.Column(db.Boolean, default=False)
+    is_anonymous = db.Column(db.Boolean, default=True)
+
+class GratitudeNote(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    content = db.Column(db.String(500), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

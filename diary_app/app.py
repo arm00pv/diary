@@ -16,7 +16,7 @@ from .quotes import get_random_quote
 from .prompts import get_random_prompt
 
 # Import models and db
-from .models import db, User, DiaryEntry
+from .models import db, User, DiaryEntry, GratitudeNote
 
 def calculate_streak(entries):
     """
@@ -234,6 +234,30 @@ def create_app(test_config=None):
 
         return render_template('read_mode.html', entries=entries)
 
+    @main_bp.route('/gratitude', methods=['GET', 'POST'])
+    @login_required
+    def gratitude():
+        """Gratitude Jar view."""
+        if request.method == 'POST':
+            content = request.form.get('content')
+            if content:
+                note = GratitudeNote(user_id=current_user.id, content=content)
+                db.session.add(note)
+                db.session.commit()
+                flash('Added to your Gratitude Jar! 🌟', 'success')
+            return redirect(url_for('main.gratitude'))
+
+        notes = GratitudeNote.query.filter_by(user_id=current_user.id).order_by(GratitudeNote.created_at.desc()).all()
+        return render_template('gratitude.html', notes=notes)
+
+    @main_bp.route('/community')
+    @login_required
+    def community():
+        """Community Feed."""
+        # Show public entries from all users, anonymous by default
+        entries = DiaryEntry.query.filter_by(is_public=True).order_by(DiaryEntry.created_at.desc()).limit(50).all()
+        return render_template('community.html', entries=entries)
+
     @main_bp.route('/calendar')
     @login_required
     def calendar():
@@ -352,7 +376,8 @@ def create_app(test_config=None):
                 DiaryEntry.user_id == current_user.id,
                 extract('month', DiaryEntry.entry_date) == today.month,
                 extract('day', DiaryEntry.entry_date) == today.day,
-                extract('year', DiaryEntry.entry_date) != today.year
+                extract('year', DiaryEntry.entry_date) != today.year,
+                (DiaryEntry.is_locked == False) | (DiaryEntry.unlock_date <= today)
             ).all()
 
         # Calculate Streak
@@ -431,7 +456,8 @@ def create_app(test_config=None):
                 sentiment_score=sentiment,
                 dominant_emotion=emotion,
                 is_locked=is_locked,
-                unlock_date=unlock_date
+                unlock_date=unlock_date,
+                is_public = 'is_public' in request.form
             )
             db.session.add(entry)
             db.session.commit()

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="text-center mb-5">
+        <h1>Community Feed 🌍</h1>
+        <p class="text-muted">Shared thoughts from around the world.</p>
+    </div>
+
+    <div class="row">
+        {% for entry in entries %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <small class="text-muted">Anonymous</small>
+                        <small class="text-muted">{{ entry.entry_date.strftime('%b %d') }}</small>
+                    </div>
+                    <p class="card-text">{{ entry.content | markdown | safe }}</p>
+
+                    {% if entry.mood %}
+                    <span class="badge bg-light text-dark border">{{ entry.mood }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12 text-center">
+            <p>No public stories yet. Be the first to share!</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
