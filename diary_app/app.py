@@ -16,7 +16,7 @@ from .quotes import get_random_quote
 from .prompts import get_random_prompt
 
 # Import models and db
-from .models import db, User, DiaryEntry, GratitudeNote
+from .models import db, User, DiaryEntry, GratitudeNote, EntryLike
 
 def calculate_streak(entries):
     """
@@ -256,7 +256,32 @@ def create_app(test_config=None):
         """Community Feed."""
         # Show public entries from all users, anonymous by default
         entries = DiaryEntry.query.filter_by(is_public=True).order_by(DiaryEntry.created_at.desc()).limit(50).all()
-        return render_template('community.html', entries=entries)
+
+        # Get list of entry IDs liked by current user for UI state
+        user_likes = [like.entry_id for like in EntryLike.query.filter_by(user_id=current_user.id).all()]
+
+        return render_template('community.html', entries=entries, user_likes=user_likes)
+
+    @main_bp.route('/community/like/<int:entry_id>', methods=['POST'])
+    @login_required
+    def like_entry(entry_id):
+        """Toggle like/hug on an entry."""
+        entry = DiaryEntry.query.get_or_404(entry_id)
+        if not entry.is_public:
+            abort(403)
+
+        existing_like = EntryLike.query.filter_by(user_id=current_user.id, entry_id=entry_id).first()
+
+        if existing_like:
+            db.session.delete(existing_like)
+            flash('Hug removed.', 'info')
+        else:
+            new_like = EntryLike(user_id=current_user.id, entry_id=entry_id)
+            db.session.add(new_like)
+            flash('You sent a hug! 🫂', 'success')
+
+        db.session.commit()
+        return redirect(url_for('main.community'))
 
     @main_bp.route('/calendar')
     @login_required
@@ -345,29 +370,47 @@ def create_app(test_config=None):
         today = datetime.utcnow().date()
 
         query = request.args.get('q')
+        mood_filter = request.args.get('mood')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+
+        # Base Query
+        base_query = DiaryEntry.query.filter(
+            DiaryEntry.user_id == current_user.id,
+            (DiaryEntry.is_locked == False) | (DiaryEntry.unlock_date <= today)
+        )
 
         # 1. Search Logic with Highlighting
         if query:
-            entries = DiaryEntry.query.filter(
-                DiaryEntry.user_id == current_user.id,
-                (DiaryEntry.content.contains(query) | DiaryEntry.tags.contains(query)),
-                # Filter out locked entries
-                (DiaryEntry.is_locked == False) | (DiaryEntry.unlock_date <= today)
-            ).order_by(DiaryEntry.entry_date.desc()).all()
+            base_query = base_query.filter(
+                (DiaryEntry.content.contains(query) | DiaryEntry.tags.contains(query))
+            )
 
-            # Highlight terms (simple approach, cautious of HTML)
-            # In production, use a sanitizer before highlighting.
+        # 2. Advanced Filters
+        if mood_filter:
+            base_query = base_query.filter(DiaryEntry.mood == mood_filter)
+
+        if start_date:
+            try:
+                s_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+                base_query = base_query.filter(DiaryEntry.entry_date >= s_date)
+            except ValueError:
+                pass
+
+        if end_date:
+            try:
+                e_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+                base_query = base_query.filter(DiaryEntry.entry_date <= e_date)
+            except ValueError:
+                pass
+
+        entries = base_query.order_by(DiaryEntry.entry_date.desc()).all()
+
+        if query:
+            # Highlight terms
             for entry in entries:
-                # Case-insensitive replacement
                 pattern = re.compile(re.escape(query), re.IGNORECASE)
                 entry.content = pattern.sub(lambda m: f'<mark>{m.group(0)}</mark>', entry.content)
-
-        else:
-            # Show unlocked entries (or locked ones that have expired)
-            entries = DiaryEntry.query.filter(
-                DiaryEntry.user_id == current_user.id,
-                (DiaryEntry.is_locked == False) | (DiaryEntry.unlock_date <= today)
-            ).order_by(DiaryEntry.entry_date.desc()).all()
 
         # 2. On This Day Logic (Flashbacks)
         flashbacks = []

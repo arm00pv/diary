@@ -86,6 +86,13 @@ class DiaryEntry(db.Model):
     is_public = db.Column(db.Boolean, default=False)
     is_anonymous = db.Column(db.Boolean, default=True)
 
+    likes = db.relationship('EntryLike', backref='entry', lazy=True, cascade="all, delete-orphan")
+
+class EntryLike(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    entry_id = db.Column(db.Integer, db.ForeignKey('diary_entry.id'), nullable=False)
+
 class GratitudeNote(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)

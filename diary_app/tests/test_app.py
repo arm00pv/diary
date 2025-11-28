@@ -230,6 +230,33 @@ class DiaryTestCase(unittest.TestCase):
         rv = self.client.get('/?q=London')
         self.assertIn(b'<mark>London</mark>', rv.data)
 
+    def test_advanced_search(self):
+        self.register('search_user', 'pass')
+
+        # Happy entry
+        self.client.post('/entry/new', data=dict(
+            content='Happy Day',
+            entry_date='2023-11-01',
+            mood='Happy'
+        ))
+
+        # Sad entry
+        self.client.post('/entry/new', data=dict(
+            content='Sad Day',
+            entry_date='2023-11-02',
+            mood='Sad'
+        ))
+
+        # Filter by Mood
+        rv = self.client.get('/?mood=Happy')
+        self.assertIn(b'Happy Day', rv.data)
+        self.assertNotIn(b'Sad Day', rv.data)
+
+        # Filter by Date
+        rv = self.client.get('/?start_date=2023-11-02&end_date=2023-11-03')
+        self.assertNotIn(b'Happy Day', rv.data)
+        self.assertIn(b'Sad Day', rv.data)
+
     def test_markdown_rendering(self):
         self.register('md_user', 'pass')
 

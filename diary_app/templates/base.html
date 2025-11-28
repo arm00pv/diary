@@ -15,6 +15,15 @@
                 body { font-family: 'Courier New', monospace !important; }
             {% endif %}
         {% endif %}
+
+        /* Print Styles */
+        @media print {
+            nav, .btn, .no-print { display: none !important; }
+            body { background-color: white !important; font-family: 'Georgia', serif !important; color: black !important; }
+            .container { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            .card { border: none !important; box-shadow: none !important; page-break-inside: avoid; }
+            a { text-decoration: none !important; color: black !important; }
+        }
     </style>
   </head>
   <body>

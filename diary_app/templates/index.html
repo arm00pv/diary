@@ -53,9 +53,38 @@
 <div class="row mb-4">
     <div class="col-md-12">
         <form action="{{ url_for('main.index') }}" method="GET">
-            <div class="input-group">
+            <div class="input-group mb-2">
                 <input type="text" class="form-control" placeholder="Search entries or tags..." name="q" value="{{ request.args.get('q', '') }}">
-                <button class="btn btn-outline-secondary" type="submit">Search</button>
+                <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#advancedFilters">
+                    ⚙️ Filters
+                </button>
+                <button class="btn btn-primary" type="submit">Search</button>
+            </div>
+
+            <div class="collapse" id="advancedFilters">
+                <div class="card card-body bg-light">
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label">Mood</label>
+                            <select name="mood" class="form-select">
+                                <option value="">All Moods</option>
+                                <option value="Happy" {% if request.args.get('mood') == 'Happy' %}selected{% endif %}>Happy</option>
+                                <option value="Sad" {% if request.args.get('mood') == 'Sad' %}selected{% endif %}>Sad</option>
+                                <option value="Anxious" {% if request.args.get('mood') == 'Anxious' %}selected{% endif %}>Anxious</option>
+                                <option value="Neutral" {% if request.args.get('mood') == 'Neutral' %}selected{% endif %}>Neutral</option>
+                                <option value="Excited" {% if request.args.get('mood') == 'Excited' %}selected{% endif %}>Excited</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" name="start_date" class="form-control" value="{{ request.args.get('start_date', '') }}">
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label">End Date</label>
+                            <input type="date" name="end_date" class="form-control" value="{{ request.args.get('end_date', '') }}">
+                        </div>
+                    </div>
+                </div>
             </div>
         </form>
     </div>
