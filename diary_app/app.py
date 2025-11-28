@@ -20,10 +20,10 @@ from .quotes import get_random_quote
 from .prompts import get_random_prompt
 
 # Import models and db
-from .models import db, User, DiaryEntry, GratitudeNote, EntryLike
+from .models import db, User, DiaryEntry, GratitudeNote, EntryLike, Habit, HabitCompletion
 
 UPLOAD_FOLDER = 'diary_app/static/uploads'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webm', 'wav', 'mp3', 'ogg'}
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -295,6 +295,70 @@ def create_app(test_config=None):
         db.session.commit()
         return redirect(url_for('main.community'))
 
+    @main_bp.route('/habits', methods=['GET', 'POST'])
+    @login_required
+    def habits():
+        """Manage Habits."""
+        if request.method == 'POST':
+            name = request.form.get('name')
+            icon = request.form.get('icon', '✅')
+
+            if name:
+                habit = Habit(user_id=current_user.id, name=name, icon=icon)
+                db.session.add(habit)
+                db.session.commit()
+                flash('Habit added!', 'success')
+            return redirect(url_for('main.habits'))
+
+        user_habits = Habit.query.filter_by(user_id=current_user.id).all()
+        return render_template('habits.html', habits=user_habits)
+
+    @main_bp.route('/habits/delete/<int:habit_id>', methods=['POST'])
+    @login_required
+    def delete_habit(habit_id):
+        habit = Habit.query.get_or_404(habit_id)
+        if habit.user_id != current_user.id:
+            abort(403)
+        db.session.delete(habit)
+        db.session.commit()
+        flash('Habit deleted.', 'success')
+        return redirect(url_for('main.habits'))
+
+    @main_bp.route('/habits/toggle/<int:habit_id>', methods=['POST'])
+    @login_required
+    def toggle_habit(habit_id):
+        habit = Habit.query.get_or_404(habit_id)
+        if habit.user_id != current_user.id:
+            abort(403)
+
+        # Toggle for Today (or provided date, but simplifying to today for widget)
+        date_str = request.form.get('date')
+        if date_str:
+            try:
+                target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            except ValueError:
+                target_date = datetime.utcnow().date()
+        else:
+            target_date = datetime.utcnow().date()
+
+        completion = HabitCompletion.query.filter_by(habit_id=habit_id, date=target_date).first()
+
+        if completion:
+            db.session.delete(completion)
+            status = "unchecked"
+        else:
+            new_comp = HabitCompletion(habit_id=habit_id, date=target_date)
+            db.session.add(new_comp)
+            status = "checked"
+
+        db.session.commit()
+
+        # If AJAX request, return JSON
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'status': status})
+
+        return redirect(url_for('main.index'))
+
     @main_bp.route('/calendar')
     @login_required
     def calendar():
@@ -444,7 +508,13 @@ def create_app(test_config=None):
         all_user_entries = DiaryEntry.query.filter_by(user_id=current_user.id).all()
         streak = calculate_streak(all_user_entries)
 
-        return render_template('index.html', entries=entries, streak=streak, quote=quote, flashbacks=flashbacks)
+        # Habits for Widget
+        habits = Habit.query.filter_by(user_id=current_user.id).all()
+        # Attach completion status for today
+        for habit in habits:
+            habit.completed_today = HabitCompletion.query.filter_by(habit_id=habit.id, date=today).first() is not None
+
+        return render_template('index.html', entries=entries, streak=streak, quote=quote, flashbacks=flashbacks, habits=habits)
 
     # Markdown Filter
     @app.template_filter('markdown')
@@ -506,10 +576,19 @@ def create_app(test_config=None):
                 file = request.files['image']
                 if file and allowed_file(file.filename):
                     filename = secure_filename(file.filename)
-                    # Unique filename to avoid collisions
-                    unique_filename = f"{current_user.id}_{datetime.utcnow().timestamp()}_{filename}"
+                    unique_filename = f"img_{current_user.id}_{datetime.utcnow().timestamp()}_{filename}"
                     file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
                     image_filename = unique_filename
+
+            # Handle Audio Upload (Blob or File)
+            audio_filename = None
+            if 'audio' in request.files:
+                file = request.files['audio']
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    unique_filename = f"audio_{current_user.id}_{datetime.utcnow().timestamp()}_{filename}"
+                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
+                    audio_filename = unique_filename
 
             # Calculate Sentiment
             sentiment = TextBlob(content).sentiment.polarity
@@ -530,7 +609,8 @@ def create_app(test_config=None):
                 unlock_date=unlock_date,
                 is_public = 'is_public' in request.form,
                 is_secret = 'is_secret' in request.form,
-                image_filename=image_filename
+                image_filename=image_filename,
+                audio_filename=audio_filename
             )
             db.session.add(entry)
             db.session.commit()

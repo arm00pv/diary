@@ -99,8 +99,15 @@
                             <button class="btn btn-outline-secondary" type="button" id="mic-btn" title="Dictate Entry">
                                 🎤
                             </button>
+                            <button class="btn btn-outline-danger" type="button" id="record-btn" title="Record Voice Memo">
+                                🎙️
+                            </button>
                         </div>
                         <small class="text-muted" id="mic-status" style="display: none;">Listening...</small>
+                        <small class="text-danger" id="record-status" style="display: none;">Recording... <button type="button" id="stop-record-btn" class="btn btn-sm btn-outline-dark">Stop</button></small>
+                        <div id="audio-preview" class="mt-2" style="display: none;">
+                            <audio controls id="audio-player"></audio>
+                        </div>
 
                         <!-- Simple Emoji Picker (Hidden by default) -->
                         <div id="emoji-picker" class="card p-2 mt-1" style="display: none; position: absolute; z-index: 1000; max-width: 300px;">
@@ -138,6 +145,13 @@
                             <img src="{{ url_for('static', filename='uploads/' + entry.image_filename) }}" class="img-fluid rounded" style="max-height: 400px;">
                         </div>
                         {% endif %}
+
+                    {% if entry and entry.audio_filename %}
+                    <div class="mb-3">
+                        <p class="text-muted small">Voice Memo:</p>
+                        <audio controls src="{{ url_for('static', filename='uploads/' + entry.audio_filename) }}"></audio>
+                    </div>
+                    {% endif %}
                         {{ entry.content | markdown | safe }}
                     </div>
                 </div>
@@ -298,5 +312,76 @@
                 contentArea.focus();
             });
     });
+
+    // Voice Recorder (Audio Memo)
+    const recordBtn = document.getElementById('record-btn');
+    const stopRecordBtn = document.getElementById('stop-record-btn');
+    const recordStatus = document.getElementById('record-status');
+    const audioPreview = document.getElementById('audio-preview');
+    const audioPlayer = document.getElementById('audio-player');
+    const form = document.querySelector('form');
+
+    let mediaRecorder;
+    let audioChunks = [];
+
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        recordBtn.addEventListener('click', () => {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.start();
+
+                    recordBtn.style.display = 'none';
+                    recordStatus.style.display = 'inline-block';
+                    audioChunks = [];
+
+                    mediaRecorder.addEventListener("dataavailable", event => {
+                        audioChunks.push(event.data);
+                    });
+
+                    mediaRecorder.addEventListener("stop", () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        audioPlayer.src = audioUrl;
+                        audioPreview.style.display = 'block';
+
+                        window.recordedAudioBlob = audioBlob;
+                    });
+                });
+        });
+
+        stopRecordBtn.addEventListener('click', () => {
+            if (mediaRecorder) {
+                mediaRecorder.stop();
+                recordBtn.style.display = 'inline-block';
+                recordStatus.style.display = 'none';
+            }
+        });
+
+        // Hijack form submit to send blob
+        form.addEventListener('submit', function(event) {
+            if (window.recordedAudioBlob) {
+                event.preventDefault();
+                const formData = new FormData(form);
+                formData.append('audio', window.recordedAudioBlob, 'voice_memo.webm');
+
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData
+                }).then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    } else {
+                        // Fallback reload
+                        window.location.href = "{{ url_for('main.index') }}";
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+        });
+    } else {
+        recordBtn.style.display = 'none';
+    }
 </script>
 {% endblock %}

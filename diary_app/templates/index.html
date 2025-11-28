@@ -24,6 +24,29 @@
 </div>
 {% endif %}
 
+<!-- Daily Habits Widget -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Daily Habits</span>
+                <a href="{{ url_for('main.habits') }}" class="btn btn-sm btn-outline-primary">Manage</a>
+            </div>
+            <div class="card-body d-flex flex-wrap gap-3">
+                {% for habit in habits %}
+                <form action="{{ url_for('main.toggle_habit', habit_id=habit.id) }}" method="POST" class="d-inline">
+                    <button type="submit" class="btn {% if habit.completed_today %}btn-success{% else %}btn-outline-secondary{% endif %} rounded-pill">
+                        {{ habit.icon }} {{ habit.name }}
+                    </button>
+                </form>
+                {% else %}
+                <span class="text-muted small">No habits set. <a href="{{ url_for('main.habits') }}">Add one?</a></span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Flashbacks -->
 {% if flashbacks %}
 <div class="row mb-4">

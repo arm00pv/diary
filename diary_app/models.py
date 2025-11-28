@@ -93,12 +93,29 @@ class DiaryEntry(db.Model):
     # Photo Memories
     image_filename = db.Column(db.String(100), nullable=True)
 
+    # Voice Memos
+    audio_filename = db.Column(db.String(100), nullable=True)
+
     likes = db.relationship('EntryLike', backref='entry', lazy=True, cascade="all, delete-orphan")
 
 class EntryLike(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     entry_id = db.Column(db.Integer, db.ForeignKey('diary_entry.id'), nullable=False)
+
+class Habit(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    icon = db.Column(db.String(10), default='✅')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    completions = db.relationship('HabitCompletion', backref='habit', lazy=True, cascade="all, delete-orphan")
+
+class HabitCompletion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    habit_id = db.Column(db.Integer, db.ForeignKey('habit.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
 
 class GratitudeNote(db.Model):
     id = db.Column(db.Integer, primary_key=True)

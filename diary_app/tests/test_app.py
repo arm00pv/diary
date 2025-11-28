@@ -329,6 +329,28 @@ class DiaryTestCase(unittest.TestCase):
         rv = self.client.get('/gratitude')
         self.assertIn(b'Family', rv.data)
 
+    def test_habits(self):
+        self.register('habit_user', 'pass')
+
+        # Create Habit
+        self.client.post('/habits', data=dict(name='Drink Water', icon='💧'))
+
+        # Verify in Dashboard context
+        rv = self.client.get('/')
+        self.assertIn(b'Drink Water', rv.data)
+
+        # Toggle Habit (using ID 1)
+        with self.app.app_context():
+            user = User.query.filter_by(username='habit_user').first()
+
+            # Let's fetch habit from DB
+            from diary_app.models import Habit
+            habit = Habit.query.filter_by(user_id=user.id).first()
+            habit_id = habit.id
+
+        rv = self.client.post(f'/habits/toggle/{habit_id}', follow_redirects=True)
+        self.assertIn(b'btn-success', rv.data) # Should be green now
+
     def test_community_feed(self):
         self.register('comm_user', 'pass')
 
