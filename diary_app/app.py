@@ -1,12 +1,16 @@
 import os
 import click
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, Response
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 import re
+import csv
+import io
 import json
 import markdown
 from datetime import datetime, timedelta
 from werkzeug.exceptions import abort
+from werkzeug.utils import secure_filename
+from werkzeug.security import check_password_hash, generate_password_hash
 from textblob import TextBlob
 from collections import Counter
 from sqlalchemy import extract
@@ -17,6 +21,13 @@ from .prompts import get_random_prompt
 
 # Import models and db
 from .models import db, User, DiaryEntry, GratitudeNote, EntryLike
+
+UPLOAD_FOLDER = 'diary_app/static/uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def calculate_streak(entries):
     """
@@ -112,6 +123,7 @@ def create_app(test_config=None):
         SECRET_KEY='dev', # Change this in production
         SQLALCHEMY_DATABASE_URI='sqlite:///' + os.path.join(app.instance_path, 'diary.sqlite'),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        UPLOAD_FOLDER=UPLOAD_FOLDER
     )
 
     if test_config is None:
@@ -358,6 +370,11 @@ def create_app(test_config=None):
         if password:
             current_user.set_password(password)
 
+        # Secret PIN Update
+        pin = request.form.get('secret_pin')
+        if pin:
+            current_user.secret_pin_hash = generate_password_hash(pin)
+
         db.session.commit()
         flash('Profile updated successfully!')
         return redirect(url_for('main.settings'))
@@ -483,6 +500,17 @@ def create_app(test_config=None):
             except ValueError:
                 entry_date = datetime.utcnow().date()
 
+            # Handle Image Upload
+            image_filename = None
+            if 'image' in request.files:
+                file = request.files['image']
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    # Unique filename to avoid collisions
+                    unique_filename = f"{current_user.id}_{datetime.utcnow().timestamp()}_{filename}"
+                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
+                    image_filename = unique_filename
+
             # Calculate Sentiment
             sentiment = TextBlob(content).sentiment.polarity
 
@@ -500,7 +528,9 @@ def create_app(test_config=None):
                 dominant_emotion=emotion,
                 is_locked=is_locked,
                 unlock_date=unlock_date,
-                is_public = 'is_public' in request.form
+                is_public = 'is_public' in request.form,
+                is_secret = 'is_secret' in request.form,
+                image_filename=image_filename
             )
             db.session.add(entry)
             db.session.commit()
@@ -529,12 +559,31 @@ def create_app(test_config=None):
         if entry.user_id != current_user.id:
             abort(403)
 
+        # Secret PIN Verification
+        if entry.is_secret:
+            # Check if PIN provided in session or form
+            # For simplicity, we use a simple form check on the unlock page
+            if 'pin_verified_entry' not in session or session['pin_verified_entry'] != entry_id:
+                if request.method == 'POST' and 'unlock_pin' in request.form:
+                    pin = request.form.get('unlock_pin')
+                    if current_user.secret_pin_hash and check_password_hash(current_user.secret_pin_hash, pin):
+                        session['pin_verified_entry'] = entry_id
+                        return redirect(url_for('main.view_entry', entry_id=entry_id))
+                    else:
+                        flash('Incorrect PIN', 'danger')
+
+                # If verified, continue to view
+                # If not verified and just GET or failed POST, show unlock screen
+                if 'pin_verified_entry' not in session or session['pin_verified_entry'] != entry_id:
+                    return render_template('unlock_entry.html', entry=entry)
+
         if request.method == 'POST':
             entry.content = request.form.get('content')
             date_str = request.form.get('entry_date')
             entry.mood = request.form.get('mood')
             entry.weather = request.form.get('weather')
             entry.tags = request.form.get('tags')
+            entry.is_secret = 'is_secret' in request.form
 
             # Recalculate sentiment and emotion
             entry.sentiment_score = TextBlob(entry.content).sentiment.polarity
@@ -700,6 +749,35 @@ def create_app(test_config=None):
         response = jsonify(data)
         response.headers.set('Content-Disposition', 'attachment; filename=diary_export.json')
         return response
+
+    @main_bp.route('/export/csv')
+    @login_required
+    def export_data_csv():
+        """Export all user entries as CSV."""
+        entries = DiaryEntry.query.filter_by(user_id=current_user.id).all()
+
+        # Create CSV in memory
+        si = io.StringIO()
+        cw = csv.writer(si)
+        cw.writerow(['Date', 'Content', 'Mood', 'Weather', 'Emotion', 'Sentiment', 'Tags'])
+
+        for e in entries:
+            cw.writerow([
+                e.entry_date.strftime('%Y-%m-%d'),
+                e.content,
+                e.mood or '',
+                e.weather or '',
+                e.dominant_emotion,
+                e.sentiment_score,
+                e.tags or ''
+            ])
+
+        output = si.getvalue()
+        return Response(
+            output,
+            mimetype="text/csv",
+            headers={"Content-Disposition": "attachment;filename=diary_export.csv"}
+        )
 
     @main_bp.route('/import', methods=['POST'])
     @login_required

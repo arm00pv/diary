@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                🔒 Secret Entry Locked
+            </div>
+            <div class="card-body text-center">
+                <h5 class="card-title">Enter Secret PIN to Unlock</h5>
+                <p class="card-text text-muted">This entry is protected.</p>
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <input type="password" class="form-control text-center" name="unlock_pin" placeholder="****" required style="font-size: 1.5rem; letter-spacing: 5px;">
+                    </div>
+                    <button type="submit" class="btn btn-danger w-100">Unlock</button>
+                </form>
+
+                <div class="mt-3">
+                    <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

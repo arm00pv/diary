@@ -14,6 +14,7 @@ class User(UserMixin, db.Model):
     theme_preference = db.Column(db.String(50), default='default')
     font_preference = db.Column(db.String(20), default='sans') # 'sans', 'serif', 'mono'
     avatar_emoji = db.Column(db.String(10), default='👤')
+    secret_pin_hash = db.Column(db.String(256), nullable=True)
 
     # Admin & Status
     # Roles: 'user', 'admin', 'super_admin', 'moderator'
@@ -82,9 +83,15 @@ class DiaryEntry(db.Model):
     is_locked = db.Column(db.Boolean, default=False)
     unlock_date = db.Column(db.Date, nullable=True)
 
+    # Secret PIN Lock
+    is_secret = db.Column(db.Boolean, default=False)
+
     # Community Feed
     is_public = db.Column(db.Boolean, default=False)
     is_anonymous = db.Column(db.Boolean, default=True)
+
+    # Photo Memories
+    image_filename = db.Column(db.String(100), nullable=True)
 
     likes = db.relationship('EntryLike', backref='entry', lazy=True, cascade="all, delete-orphan")
 

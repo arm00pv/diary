@@ -290,6 +290,38 @@ class DiaryTestCase(unittest.TestCase):
             user = User.query.filter_by(username='future_user').first()
             self.assertTrue(user.entries[0].is_locked)
 
+    def test_secret_entry(self):
+        self.register('secret_user', 'pass')
+
+        # Set PIN
+        self.client.post('/settings/profile', data=dict(secret_pin='1234'))
+
+        # Create Secret Entry
+        self.client.post('/entry/new', data=dict(
+            content='Top Secret',
+            entry_date='2023-12-10',
+            mood='Neutral',
+            is_secret='1'
+        ))
+
+        # Get entry ID
+        with self.app.app_context():
+            user = User.query.filter_by(username='secret_user').first()
+            entry_id = user.entries[0].id
+
+        # Try to view (should get unlock page)
+        rv = self.client.get(f'/entry/{entry_id}')
+        self.assertIn(b'Enter Secret PIN', rv.data)
+        self.assertNotIn(b'Top Secret', rv.data)
+
+        # Unlock with wrong PIN
+        rv = self.client.post(f'/entry/{entry_id}', data=dict(unlock_pin='0000'))
+        self.assertIn(b'Incorrect PIN', rv.data)
+
+        # Unlock with correct PIN
+        rv = self.client.post(f'/entry/{entry_id}', data=dict(unlock_pin='1234'), follow_redirects=True)
+        self.assertIn(b'Top Secret', rv.data)
+
     def test_gratitude_jar(self):
         self.register('gratitude_user', 'pass')
         self.client.post('/gratitude', data=dict(content='Family'))

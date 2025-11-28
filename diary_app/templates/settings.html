@@ -17,6 +17,10 @@
                         <label for="password" class="form-label">Change Password</label>
                         <input type="password" class="form-control" id="password" name="password" placeholder="Leave blank to keep current">
                     </div>
+                    <div class="mb-3">
+                        <label for="secret_pin" class="form-label">Secret PIN (For Locked Entries)</label>
+                        <input type="password" class="form-control" id="secret_pin" name="secret_pin" placeholder="Set a new PIN">
+                    </div>
                     <button type="submit" class="btn btn-warning">Update Profile</button>
                 </form>
             </div>
@@ -77,6 +81,9 @@
                 <p>Download a copy of all your diary entries.</p>
                 <a href="{{ url_for('main.export_data') }}" class="btn btn-outline-secondary">
                     ⬇️ Export Data (JSON)
+                </a>
+                <a href="{{ url_for('main.export_data_csv') }}" class="btn btn-outline-success">
+                    ⬇️ Export Data (CSV)
                 </a>
 
                 <hr>
